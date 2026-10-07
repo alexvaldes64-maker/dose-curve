@@ -1,0 +1,12 @@
+node_modules
+dist
+dev-dist
+.vercel
+*.local
+*.tsbuildinfo
+.DS_Store
+
+# Local only: tool config and market research, not part of the app
+.claude/
+research_notes/
+reports/

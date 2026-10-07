@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dose Curve directions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Archivo:wdth,wght@62..125,400..800&family=Schibsted+Grotesk:wght@400..800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body { margin: 0; background: #2a2d33; font-family: system-ui, sans-serif; color: #ddd; }
+      .row { display: flex; gap: 40px; padding: 32px; flex-wrap: wrap; justify-content: center; }
+      .col h2 { font: 600 15px system-ui; margin: 0 0 10px; color: #fff; }
+      .col p { font: 13px/1.4 system-ui; margin: 0 0 14px; max-width: 390px; color: #aab; }
+      .phone { width: 390px; height: 844px; position: relative; overflow: hidden; border-radius: 28px; }
+      @media (max-width: 500px) { .row { padding: 0; gap: 0 } .col h2, .col p { padding: 0 16px } .phone { border-radius: 0 } }
+    </style>
+  </head>
+  <body>
+    <div class="row" id="row"></div>
+    <script type="module" src="./mockups.ts"></script>
+  </body>
+</html>
