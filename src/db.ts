@@ -43,6 +43,8 @@ export interface Checkin {
   appetite?: number
   /** For "wore off" check-ins: which substance wore off. */
   substance?: string
+  /** Context for the day, kept apart from side effects (e.g. "Period or PMS week"). */
+  context?: string[]
 }
 
 export interface Profile {
@@ -72,6 +74,9 @@ export interface Fill {
   strengthMg: number
   manufacturer: string
   pharmacy?: string
+  /** Optional, from the pharmacy label: National Drug Code and lot number. */
+  ndc?: string
+  lot?: string
   filledAt: string
   note?: string
 }
@@ -546,6 +551,8 @@ export function parseBackup(raw: unknown): Backup {
           strengthMg: f.strengthMg as number,
           manufacturer: String(f.manufacturer ?? ''),
           ...(f.pharmacy ? { pharmacy: String(f.pharmacy) } : {}),
+          ...(f.ndc ? { ndc: String(f.ndc) } : {}),
+          ...(f.lot ? { lot: String(f.lot) } : {}),
           filledAt: f.filledAt as string,
           ...(f.note ? { note: String(f.note) } : {}),
         }
@@ -583,6 +590,7 @@ export function parseBackup(raw: unknown): Backup {
       ...(Array.isArray(c.tags) ? { tags: (c.tags as unknown[]).map(String) } : {}),
       ...(inRange(c.appetite, 1, 5) ? { appetite: c.appetite as number } : {}),
       ...(typeof c.substance === 'string' ? { substance: c.substance } : {}),
+      ...(Array.isArray(c.context) ? { context: (c.context as unknown[]).map(String) } : {}),
     }
   })
 

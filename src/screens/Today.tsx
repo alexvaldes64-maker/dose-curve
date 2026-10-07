@@ -12,7 +12,8 @@ import { pickSubstance, useDayModel } from '../hooks/useDayModel'
 import { useNow } from '../hooks/useNow'
 import { HOUR, clampDisplay, levelAt, phaseAt } from '../lib/model'
 import { nowLabel, statusSentence } from '../lib/phaseStyle'
-import { currentDay, dateKey, fmtTime } from '../lib/time'
+import { currentDay, dateKey, fmtAgo, fmtTime } from '../lib/time'
+import { doseName } from '../lib/substances'
 import { ScheduleSheet } from '../components/ScheduleSheet'
 
 export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (substanceId: string) => void }) {
@@ -51,6 +52,8 @@ export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (
   }
 
   const bedtimeOthers = others.filter((o) => o.bedtimePlasma >= 1)
+  // Answers "did I take it?": the most recent dose of anything today, up to now.
+  const lastToday = day$.doses.filter((d) => Date.parse(d.takenAt) <= now).at(-1)
   // Observed wear-off: offered for medications once today's first dose has been taken.
   const firstDose = m.doses.length ? Math.min(...m.doses.map((d) => Date.parse(d.takenAt))) : null
   const woreOffToday = m.checkins.find((c) => c.kind === 'wore_off' && c.substance === m.id && firstDose !== null && Date.parse(c.at) >= firstDose)
@@ -83,6 +86,18 @@ export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (
       </header>
 
       <div className="space-y-3 px-4">
+        <p className="-mt-1 flex items-start gap-2 px-1 text-[15px] leading-snug" role="status">
+          <span className={`mt-[7px] h-2 w-2 shrink-0 rounded-full ${lastToday ? 'bg-good' : 'bg-clear'}`} />
+          {lastToday ? (
+            <span>
+              Last logged <span className="font-semibold">{doseName(lastToday)}</span> at {fmtTime(Date.parse(lastToday.takenAt))},{' '}
+              <span className="font-semibold">{fmtAgo(now - Date.parse(lastToday.takenAt))} ago</span>
+            </span>
+          ) : (
+            <span className="text-muted">Nothing logged today</span>
+          )}
+        </p>
+
         {hasSample && (
           <div className="card flex items-center justify-between gap-3 px-4 py-3">
             <p className="text-[15px] leading-snug">This is a sample dose at 9:30a, so you can see how the curve works.</p>

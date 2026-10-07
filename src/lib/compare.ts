@@ -33,6 +33,9 @@ export const MIN_DAYS = 5
 
 export const SIDE_EFFECT_TAGS = ['Headache', 'Low appetite', 'Trouble sleeping', 'Irritable', 'Jittery', 'Racing heart', 'Stomach upset', 'Dry mouth'] as const
 
+/** Things about the day that can change how a dose feels. Logged, never interpreted. */
+export const CONTEXT_TAGS = ['Period or PMS week', 'Short sleep', 'Skipped a meal', 'Stressful day', 'Sick'] as const
+
 export const BUCKETS = [
   { label: '0 to 2 h', from: 0, to: 2 },
   { label: '2 to 4 h', from: 2, to: 4 },

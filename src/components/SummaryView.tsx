@@ -175,6 +175,12 @@ export function SummaryView({ settings, onClose }: { settings: Settings; onClose
           </Section>
         )}
 
+        {s.context.length > 0 && (
+          <Section title="Context logged with ratings">
+            <p>{s.context.map((x) => `${x.tag} (${x.count})`).join(', ')}</p>
+          </Section>
+        )}
+
         {s.fillChanges.length > 0 && (
           <Section title="Pharmacy fills in this range">
             <ul>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { HOUR } from './model'
-import { currentDay, dateKey, dayWindowFor, type DaySchedules } from './time'
+import { currentDay, dateKey, dayWindowFor, fmtAgo, type DaySchedules } from './time'
 
 // Local times in America/Los_Angeles (set in vitest.config.ts).
 const at = (y: number, mo: number, d: number, h = 0, mi = 0) => new Date(y, mo - 1, d, h, mi).getTime()
@@ -46,5 +46,15 @@ describe('day windows', () => {
   it('fall back: the window across the repeated hour is an hour longer', () => {
     const night = dayWindowFor(day(2026, 10, 31), '22:00', '06:00', { '2026-11-01': { wake: '10:00', sleep: '23:00' } })
     expect((night.end - night.start) / HOUR).toBe(9)
+  })
+})
+
+describe('fmtAgo', () => {
+  it('reads naturally', () => {
+    expect(fmtAgo(20_000)).toBe('just now')
+    expect(fmtAgo(12 * 60_000)).toBe('12 min')
+    expect(fmtAgo(3 * HOUR + 12 * 60_000)).toBe('3 h 12 min')
+    expect(fmtAgo(2 * HOUR)).toBe('2 h')
+    expect(fmtAgo(30 * HOUR)).toBe('1 day')
   })
 })

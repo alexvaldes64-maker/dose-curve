@@ -15,12 +15,15 @@ export interface SumDose extends DoseLike {
 export interface SumCheckin extends CheckinLike {
   note?: string
   appetite?: number
+  context?: string[]
 }
 export interface SumFill extends FillLike {
   id?: number
   strengthMg: number
   manufacturer: string
   pharmacy?: string
+  ndc?: string
+  lot?: string
 }
 
 export interface SummaryInput {
@@ -81,6 +84,8 @@ export interface Summary {
     appetite: number | null
   }
   sideEffects: { tag: string; count: number }[]
+  /** Context tags (e.g. period week), counted separately from side effects. */
+  context: { tag: string; count: number }[]
   notes: { date: string; time: string; text: string }[]
   fillChanges: { date: string; what: string }[]
   /** One estimated curve per day with a dose, for the small charts. */
@@ -206,8 +211,11 @@ export function buildSummary(input: SummaryInput): Summary {
   const phaseLabels = (['Onset', 'Peak', 'Taper', 'Comedown', 'Clear'] as Phase[]).map((p) => PHASE_LABEL[p])
   const byPhase = group(phaseLabels, (c) => (phaseOf.has(c) ? PHASE_LABEL[phaseOf.get(c)!] : null))
 
-  const tagCounts = new Map<string, number>()
-  for (const c of checkins) for (const t of c.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1)
+  const count = (pick: (c: SumCheckin) => string[] | undefined) => {
+    const m = new Map<string, number>()
+    for (const c of checkins) for (const t of pick(c) ?? []) m.set(t, (m.get(t) ?? 0) + 1)
+    return [...m].map(([tag, n]) => ({ tag, count: n })).sort((a, b) => b.count - a.count)
+  }
 
   const fmtDate = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   return {
@@ -222,14 +230,18 @@ export function buildSummary(input: SummaryInput): Summary {
       byPhase,
       appetite: avg(ratings.map((c) => c.appetite).filter((x): x is number => typeof x === 'number')),
     },
-    sideEffects: [...tagCounts].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count),
+    sideEffects: count((c) => c.tags),
+    context: count((c) => c.context),
     notes: checkins
       .filter((c) => c.note)
       .map((c) => ({ date: fmtDate(Date.parse(c.at)), time: fmtTime(Date.parse(c.at)), text: c.note! })),
     fillChanges: input.fills
       .filter((f) => inRange(Date.parse(f.filledAt)))
       .sort((a, b) => a.filledAt.localeCompare(b.filledAt))
-      .map((f) => ({ date: fmtDate(Date.parse(f.filledAt)), what: `${getSubstance(f.substance).name} ${f.formulation} ${f.strengthMg} mg, ${f.manufacturer}${f.pharmacy ? `, ${f.pharmacy}` : ''}` })),
+      .map((f) => ({
+        date: fmtDate(Date.parse(f.filledAt)),
+        what: `${getSubstance(f.substance).name} ${f.formulation} ${f.strengthMg} mg, ${f.manufacturer}${f.pharmacy ? `, ${f.pharmacy}` : ''}${f.ndc ? `, NDC ${f.ndc}` : ''}${f.lot ? `, lot ${f.lot}` : ''}`,
+      })),
     dailyCurves,
   }
 }
@@ -249,7 +261,7 @@ export function csvField(v: unknown): string {
 export function toCsv(input: Pick<SummaryInput, 'doses' | 'checkins' | 'fills' | 'from' | 'to'>, profileName: string): string {
   const start = startOfLocalDay(input.from).getTime()
   const end = addDays(startOfLocalDay(input.to), 1).getTime()
-  const header = ['profile', 'type', 'date', 'time', 'substance', 'formulation', 'amount_mg', 'split_of_mg', 'fill', 'focus', 'mood', 'appetite', 'side_effects', 'note']
+  const header = ['profile', 'type', 'date', 'time', 'substance', 'formulation', 'amount_mg', 'split_of_mg', 'fill', 'focus', 'mood', 'appetite', 'side_effects', 'context', 'note']
   const rows: { t: number; cells: unknown[] }[] = []
   for (const d of input.doses) {
     const t = Date.parse(d.takenAt)
@@ -257,7 +269,7 @@ export function toCsv(input: Pick<SummaryInput, 'doses' | 'checkins' | 'fills' |
     const f = fillForDose(d, input.fills)
     rows.push({
       t,
-      cells: [profileName, 'dose', dateKey(t), fmtTime(t), getSubstance(d.substance).name, d.formulation, d.mg, d.split && d.strengthMg ? `${d.split} of ${d.strengthMg}` : '', f ? f.manufacturer : '', '', '', '', '', ''],
+      cells: [profileName, 'dose', dateKey(t), fmtTime(t), getSubstance(d.substance).name, d.formulation, d.mg, d.split && d.strengthMg ? `${d.split} of ${d.strengthMg}` : '', f ? `${f.manufacturer}${f.lot ? ` lot ${f.lot}` : ''}` : '', '', '', '', '', '', ''],
     })
   }
   for (const c of input.checkins) {
@@ -280,6 +292,7 @@ export function toCsv(input: Pick<SummaryInput, 'doses' | 'checkins' | 'fills' |
         rating ? c.mood : '',
         c.appetite ?? '',
         (c.tags ?? []).join('; '),
+        (c.context ?? []).join('; '),
         c.note ?? '',
       ],
     })

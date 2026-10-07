@@ -115,6 +115,7 @@ export function Log() {
                           Focus {e.checkin.focus}, mood {e.checkin.mood}
                           {e.checkin.appetite ? `, appetite ${e.checkin.appetite}` : ''}
                           {e.checkin.tags?.length ? <span className="text-muted">, {e.checkin.tags.join(', ').toLowerCase()}</span> : null}
+                          {e.checkin.context?.length ? <span className="text-muted">, {e.checkin.context.join(', ').toLowerCase()}</span> : null}
                           {e.checkin.note && <span className="text-muted">, {e.checkin.note}</span>}
                         </span>
                       </>

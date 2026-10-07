@@ -6,7 +6,7 @@ import { fillName } from './FillSheet'
 import { DEFAULT_SUBSTANCE, SPLIT_LABEL, SUBSTANCES, getFormulation, getSubstance, roundDose, splitAmount, stepDose, doseName } from '../lib/substances'
 import { FOCUS_COLORS } from '../lib/phaseStyle'
 import { atTime, fmtTime, toTimeInput } from '../lib/time'
-import { SIDE_EFFECT_TAGS, fillForDose } from '../lib/compare'
+import { CONTEXT_TAGS, SIDE_EFFECT_TAGS, fillForDose } from '../lib/compare'
 
 export const fieldCls = 'w-full rounded-xl bg-fill px-3 py-3 text-[16px] text-text outline-none placeholder:text-muted focus:ring-2 focus:ring-[var(--onset)]'
 export const labelCls = 'mb-1.5 block text-[14px] text-muted'
@@ -311,6 +311,7 @@ export function CheckinForm({ initial, day, onDone }: { initial?: Checkin; day?:
   const isChild = profile.kind === 'child'
   const [appetite, setAppetite] = useState(initial?.appetite ?? 3)
   const [tags, setTags] = useState<string[]>(initial?.tags ?? [])
+  const [context, setContext] = useState<string[]>(initial?.context ?? [])
   const isWoreOff = initial?.kind === 'wore_off'
   const [note, setNote] = useState(initial?.note ?? '')
   const [time, setTime] = useState(toTimeInput(initial ? Date.parse(initial.at) : Date.now()))
@@ -327,6 +328,7 @@ export function CheckinForm({ initial, day, onDone }: { initial?: Checkin; day?:
       mood,
       ...(note.trim() ? { note: note.trim() } : {}),
       ...(tags.length && !isWoreOff ? { tags } : {}),
+      ...(context.length && !isWoreOff ? { context } : {}),
       ...(isChild && !isWoreOff ? { appetite } : {}),
       ...(initial?.substance ? { substance: initial.substance } : {}),
     }
@@ -335,6 +337,7 @@ export function CheckinForm({ initial, day, onDone }: { initial?: Checkin; day?:
     if (!initial) {
       setNote('')
       setTags([])
+      setContext([])
     }
     setSaved(true)
     setTimeout(() => setSaved(false), 1200)
@@ -378,7 +381,26 @@ export function CheckinForm({ initial, day, onDone }: { initial?: Checkin; day?:
                 key={t}
                 type="button"
                 aria-pressed={on}
-                onClick={() => setTags(on ? tags.filter((x) => x !== t) : [...tags, t])}
+                onClick={() => setTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]))}
+                className={`rounded-full px-3 py-1.5 text-[14px] ${on ? 'bg-text text-card' : 'bg-fill text-text'}`}
+              >
+                {t}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div>
+        <span className={labelCls}>About today (optional)</span>
+        <div className="flex flex-wrap gap-2">
+          {CONTEXT_TAGS.map((t) => {
+            const on = context.includes(t)
+            return (
+              <button
+                key={t}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setContext((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]))}
                 className={`rounded-full px-3 py-1.5 text-[14px] ${on ? 'bg-text text-card' : 'bg-fill text-text'}`}
               >
                 {t}

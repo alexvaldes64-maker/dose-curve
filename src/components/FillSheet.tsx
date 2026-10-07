@@ -17,6 +17,8 @@ export function FillSheet({ initial, onClose }: { initial?: Fill & { id?: number
   const [pharmacy, setPharmacy] = useState(initial?.pharmacy ?? '')
   const [date, setDate] = useState(initial ? dateKey(Date.parse(initial.filledAt)) : dateKey(Date.now()))
   const [note, setNote] = useState(initial?.note ?? '')
+  const [ndc, setNdc] = useState(initial?.ndc ?? '')
+  const [lot, setLot] = useState(initial?.lot ?? '')
   const known = [...new Set(fills.map((f) => f.manufacturer).filter(Boolean))]
   const knownPharmacies = [...new Set(fills.map((f) => f.pharmacy).filter((x): x is string => !!x))]
   const mg = Number(strength)
@@ -35,6 +37,8 @@ export function FillSheet({ initial, onClose }: { initial?: Fill & { id?: number
       ...(pharmacy.trim() ? { pharmacy: pharmacy.trim() } : {}),
       filledAt: new Date(y, m - 1, d, 12).toISOString(),
       ...(note.trim() ? { note: note.trim() } : {}),
+      ...(ndc.trim() ? { ndc: ndc.trim() } : {}),
+      ...(lot.trim() ? { lot: lot.trim() } : {}),
     })
     onClose()
   }
@@ -118,6 +122,17 @@ export function FillSheet({ initial, onClose }: { initial?: Fill & { id?: number
             <input type="date" className={fieldCls} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className={labelCls}>NDC (optional)</span>
+            <input className={fieldCls} value={ndc} onChange={(e) => setNdc(e.target.value)} placeholder="e.g. 0555-0767-02" />
+          </label>
+          <label className="block">
+            <span className={labelCls}>Lot (optional)</span>
+            <input className={fieldCls} value={lot} onChange={(e) => setLot(e.target.value)} />
+          </label>
+        </div>
+        <p className="-mt-3 text-[13px] text-muted">Both are on the pharmacy label or the bottle. The lot number helps if there is ever a recall.</p>
         <label className="block">
           <span className={labelCls}>Note (optional)</span>
           <input className={fieldCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. new pill shape" />

@@ -3,12 +3,12 @@ import { buildSummary, csvField, toCsv, type SumCheckin, type SumDose, type SumF
 
 const t = (d: number, h: number, m = 0) => new Date(2026, 9, d, h, m).toISOString()
 const dose = (d: number, h: number, m = 0, extra: Partial<SumDose> = {}): SumDose => ({ profileId: 1, substance: 'adderall', formulation: 'IR', takenAt: t(d, h, m), mg: 20, ...extra })
-const fills: SumFill[] = [{ id: 1, profileId: 1, substance: 'adderall', formulation: 'IR', filledAt: t(1, 12), strengthMg: 20, manufacturer: 'Teva', pharmacy: 'CVS' }]
+const fills: SumFill[] = [{ id: 1, profileId: 1, substance: 'adderall', formulation: 'IR', filledAt: t(1, 12), strengthMg: 20, manufacturer: 'Teva', pharmacy: 'CVS', lot: 'A123' }]
 
 const doses: SumDose[] = [dose(2, 8), dose(3, 8, 30), dose(4, 9), dose(4, 13, 0, { mg: 10, strengthMg: 20, split: 0.5 }), dose(3, 7, 45, { substance: 'caffeine', formulation: 'drink', mg: 95 })]
 const checkins: SumCheckin[] = [
   { profileId: 1, kind: 'rating', at: t(2, 10), focus: 4, mood: 4, tags: ['Headache'] }, // morning, 2 h after dose
-  { profileId: 1, kind: 'rating', at: t(3, 15), focus: 2, mood: 3, note: 'crashed after lunch' }, // afternoon, 6.5 h
+  { profileId: 1, kind: 'rating', at: t(3, 15), focus: 2, mood: 3, note: 'crashed after lunch', context: ['Period or PMS week'] }, // afternoon, 6.5 h
   { profileId: 1, kind: 'wore_off', substance: 'adderall', at: t(2, 13), focus: 0, mood: 0 }, // 5 h
   { profileId: 1, kind: 'wore_off', substance: 'adderall', at: t(3, 14, 30), focus: 0, mood: 0 }, // 6 h
 ]
@@ -49,8 +49,9 @@ describe('prescriber summary', () => {
 
   it('counts side effects, keeps notes, lists fills and draws one curve per dosing day', () => {
     expect(s.sideEffects).toEqual([{ tag: 'Headache', count: 1 }])
+    expect(s.context).toEqual([{ tag: 'Period or PMS week', count: 1 }])
     expect(s.notes).toEqual([expect.objectContaining({ text: 'crashed after lunch' })])
-    expect(s.fillChanges).toEqual([expect.objectContaining({ what: 'Adderall IR 20 mg, Teva, CVS' })])
+    expect(s.fillChanges).toEqual([expect.objectContaining({ what: 'Adderall IR 20 mg, Teva, CVS, lot A123' })])
     expect(s.dailyCurves).toHaveLength(3)
     expect(s.dailyCurves[1].series.map((x) => x.id).sort()).toEqual(['adderall', 'caffeine'])
   })
@@ -75,9 +76,10 @@ describe('CSV', () => {
   it('has one row per dose and check-in in range, oldest first', () => {
     const csv = toCsv(base, 'Me')
     const lines = csv.trim().split('\r\n')
-    expect(lines[0]).toBe('profile,type,date,time,substance,formulation,amount_mg,split_of_mg,fill,focus,mood,appetite,side_effects,note')
+    expect(lines[0]).toBe('profile,type,date,time,substance,formulation,amount_mg,split_of_mg,fill,focus,mood,appetite,side_effects,context,note')
     expect(lines).toHaveLength(1 + doses.length + checkins.length)
-    expect(lines[1]).toBe('Me,dose,2026-10-02,8:00a,Adderall,IR,20,,Teva,,,,,')
+    expect(lines[1]).toBe('Me,dose,2026-10-02,8:00a,Adderall,IR,20,,Teva lot A123,,,,,,')
+    expect(csv).toContain('Period or PMS week')
     expect(csv).toContain('wore_off')
     expect(csv).toContain('0.5 of 20')
   })
