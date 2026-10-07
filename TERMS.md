@@ -14,7 +14,7 @@ Dose Curve is not a medical device and has not been evaluated or cleared by the 
 
 ## Emergencies
 
-If you think you or someone else took too much, has a bad reaction, or is in danger, get help now. In the US, call **911**, or call **Poison Control at 1-800-222-1222** (free, confidential, 24 hours). If you are thinking about suicide or are in emotional crisis, call or text **988** (Suicide and Crisis Lifeline). Outside the US, contact your local emergency number.
+If you think you or someone else took too much, has a bad reaction, or is in danger, get help now. In the US, call **911**, or call **Poison Control at 1-800-222-1222** (free, confidential, 24 hours) or use webPOISONCONTROL at https://www.poison.org. If you are thinking about suicide or are in emotional crisis, call or text **988** (Suicide and Crisis Lifeline). Outside the US, contact your local emergency number.
 
 ## Who can use it
 

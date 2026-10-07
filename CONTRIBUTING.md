@@ -8,6 +8,16 @@ Thanks for helping. Dose Curve has a few rules that are not negotiable, because 
 2. **Nothing leaves the device.** No accounts, analytics, crash reporting, ads, remote fonts or third-party scripts, and no network calls from app code. `npm run build` runs `scripts/check-privacy.mjs` and fails if one appears, and the Content Security Policy blocks them in the browser.
 3. **Every number has a source.** Half-lives, absorption, strengths, release shapes and interaction text must come from an FDA label (DailyMed), a government health source, or peer-reviewed research, linked in `src/lib/substances.ts`. No values from memory, forums or AI output.
 
+## Things we will not build
+
+These have been asked for, and they are out on purpose:
+
+- **Dose or timing suggestions** of any kind, including booster timing, "take more this week", or "how much more before bed" for stimulants.
+- **Push reminders through a server.** Reminders stay on the device (calendar file). A server would mean data leaving the device.
+- **Accounts, cloud sync or family sharing over the internet.** Moving data between devices goes through backup files the user controls.
+- **Streaks, scores or guilt badges.** They are the most common reason people with ADHD abandon apps.
+- **Claims that the app treats or manages ADHD.** Describe it as a private log and visualizer.
+
 ## Practical bits
 
 - `npm install`, then `npm run dev`. Run `npm test` and `npm run build` before opening a pull request.

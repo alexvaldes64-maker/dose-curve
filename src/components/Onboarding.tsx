@@ -139,7 +139,7 @@ export function Onboarding({ settings, termsOnly, onDone }: { settings: Settings
                 <p className="mt-1 text-muted">
                   US: call <a href="tel:911" className="whitespace-nowrap font-semibold text-text">911</a>. Poison Control:{' '}
                   <a href="tel:18002221222" className="whitespace-nowrap font-semibold text-text">1-800-222-1222</a>. Crisis: call or text{' '}
-                  <a href="tel:988" className="whitespace-nowrap font-semibold text-text">988</a>. Elsewhere, your local emergency number.
+                  <a href="tel:988" className="whitespace-nowrap font-semibold text-text">988</a>. These are US numbers; elsewhere, use your local emergency number.
                 </p>
               </div>
               <label className="mt-6 flex items-start gap-3">

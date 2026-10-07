@@ -6,7 +6,9 @@ Estimates only, based on general averages. Not medical advice. Follow your presc
 
 Free and open source under the [MIT License](LICENSE). See the [privacy policy](PRIVACY.md), [terms of use](TERMS.md), [security policy](SECURITY.md), [contributing rules](CONTRIBUTING.md), [code of conduct](CODE_OF_CONDUCT.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
-Dose Curve is not a medical device and has not been evaluated by the FDA. In an emergency in the US, call 911 or Poison Control at 1-800-222-1222.
+> **Disclaimer.** Dose Curve is a private log and visualizer. It is not a medical device, has not been evaluated or approved by the FDA or any other regulator, and is not medical advice. Do not use it to decide whether, when or how much to take of anything. The curves are estimates from general averages and can be wrong for you. Use it at your own risk; it is provided without warranty (see [LICENSE](LICENSE) and [TERMS.md](TERMS.md)).
+>
+> In an emergency in the US, call 911, Poison Control at 1-800-222-1222, or use webPOISONCONTROL at https://www.poison.org. For a mental health crisis, call or text 988. Outside the US, use your local emergency number.
 
 - Vite + React + TypeScript + Tailwind CSS v4
 - Dexie (IndexedDB) for storage. No backend, no accounts, no analytics. Nothing leaves the device.
