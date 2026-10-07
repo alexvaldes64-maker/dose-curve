@@ -68,3 +68,19 @@ describe('fillStats', () => {
     expect(median([])).toBeNull()
   })
 })
+
+import { observedWearOff } from './compare'
+
+describe('observedWearOff', () => {
+  it('takes the median first wear-off per day, for that substance only', () => {
+    const doses = [2, 3, 4].map((d) => dose(d, 8)).concat([dose(3, 7, { substance: 'caffeine', formulation: 'drink' })])
+    const checkins: CheckinLike[] = [
+      { profileId: 1, kind: 'wore_off', substance: 'adderall', at: t(2, 12), focus: 0, mood: 0 }, // 4 h
+      { profileId: 1, kind: 'wore_off', substance: 'adderall', at: t(3, 13), focus: 0, mood: 0 }, // 5 h
+      { profileId: 1, kind: 'wore_off', substance: 'caffeine', at: t(3, 9), focus: 0, mood: 0 }, // other substance
+      { profileId: 1, kind: 'wore_off', substance: 'adderall', at: t(4, 14, 30), focus: 0, mood: 0 }, // 6.5 h
+    ]
+    expect(observedWearOff('adderall', doses, checkins)).toEqual({ days: 3, medianHours: 5 })
+    expect(observedWearOff('vyvanse', doses, checkins)).toEqual({ days: 0, medianHours: null })
+  })
+})

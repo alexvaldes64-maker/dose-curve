@@ -126,3 +126,27 @@ export function fillStats<F extends FillLike>(fill: F, fills: F[], doses: DoseLi
     sideEffects: [...tagCounts].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count),
   }
 }
+
+/**
+ * Across all logged days for one substance: how many hours after the day's first dose the user
+ * typically marked "wore off". Observed only, never adjusted by the model.
+ */
+export function observedWearOff(substance: string, doses: DoseLike[], checkins: CheckinLike[]): { days: number; medianHours: number | null } {
+  const firsts = new Map<string, number>()
+  for (const d of doses) {
+    if (d.substance !== substance) continue
+    const t = Date.parse(d.takenAt)
+    const k = dateKey(t)
+    firsts.set(k, Math.min(firsts.get(k) ?? Infinity, t))
+  }
+  const hours: number[] = []
+  for (const first of firsts.values()) {
+    const wo = checkins
+      .filter((c) => c.kind === 'wore_off' && (!c.substance || c.substance === substance))
+      .map((c) => (Date.parse(c.at) - first) / HOUR)
+      .filter((h) => h >= 0 && h < 24)
+      .sort((a, b) => a - b)[0]
+    if (wo !== undefined) hours.push(wo)
+  }
+  return { days: hours.length, medianHours: median(hours) }
+}

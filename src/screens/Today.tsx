@@ -6,7 +6,7 @@ import { EntrySheet, type Entry } from '../components/EntrySheet'
 import { Stat } from '../components/Stat'
 import { SubstanceChips } from '../components/SubstanceChips'
 import { PX_PER_HOUR, TOP_PAD } from '../components/Timeline'
-import { logWoreOff, toggleSample, useActiveProfile, useHasSample, useLastSubstance, type Settings } from '../db'
+import { downloadBackup, logWoreOff, saveSettings, toggleSample, useActiveProfile, useBackupDue, useHasSample, useLastSubstance, type Settings } from '../db'
 import { Avatar, ProfileSheet } from '../components/ProfileSheet'
 import { pickSubstance, useDayModel } from '../hooks/useDayModel'
 import { useNow } from '../hooks/useNow'
@@ -25,6 +25,7 @@ export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (
   const m = pickSubstance(day$.substances, requested, now) ?? day$.empty
   const others = day$.substances.filter((d) => d.id !== m.id)
   const hasSample = useHasSample()
+  const backupDue = useBackupDue()
   const [entry, setEntry] = useState<Entry | null>(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [profilesOpen, setProfilesOpen] = useState(false)
@@ -82,6 +83,34 @@ export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (
       </header>
 
       <div className="space-y-3 px-4">
+        {hasSample && (
+          <div className="card flex items-center justify-between gap-3 px-4 py-3">
+            <p className="text-[15px] leading-snug">This is a sample dose at 9:30a, so you can see how the curve works.</p>
+            <button type="button" onClick={() => toggleSample(day)} className="shrink-0 rounded-full bg-fill px-4 py-2 text-[15px] font-semibold">
+              Remove
+            </button>
+          </div>
+        )}
+
+        {backupDue && !hasSample && (
+          <div className="card px-4 py-3.5">
+            <p className="text-[16px] font-semibold">Back up your log</p>
+            <p className="mt-0.5 text-[14px] leading-snug text-muted">It only lives on this phone. Save a copy somewhere safe now and then.</p>
+            <div className="mt-3 flex gap-2">
+              <button type="button" onClick={() => downloadBackup()} className="rounded-full bg-text px-4 py-2 text-[15px] font-semibold text-card">
+                Back up now
+              </button>
+              <button
+                type="button"
+                onClick={() => saveSettings({ backupSnoozedUntil: new Date(Date.now() + 14 * 24 * HOUR).toISOString() })}
+                className="rounded-full px-4 py-2 text-[15px] font-medium text-muted"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        )}
+
         <SubstanceChips days={day$.substances} selected={m.id} onSelect={setRequested} />
 
         <section className="card flex items-center gap-5 p-5">
@@ -153,9 +182,9 @@ export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (
           onAdjust={onAdjust}
         />
 
-        {import.meta.env.DEV && (
+        {import.meta.env.DEV && !hasSample && (
           <button type="button" onClick={() => toggleSample(day)} className="w-full py-3 text-[13px] text-muted underline decoration-dotted underline-offset-4">
-            {hasSample ? 'Remove sample dose (dev)' : 'Add sample dose at 9:30a (dev)'}
+            Add sample dose at 9:30a (dev)
           </button>
         )}
       </div>

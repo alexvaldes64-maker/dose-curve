@@ -59,6 +59,10 @@ const DAILYMED_ADDERALL_IR = 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm
 const DAILYMED_VYVANSE = 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=704e4378-ca83-445c-8b45-3cfa51c1ecad'
 const DAILYMED_RITALIN = 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=d6fb2750-cdab-4749-ba0d-7534840a5892'
 const DAILYMED_CONCERTA = 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=1a88218c-5b18-4220-8f56-526de1a276cd'
+const DAILYMED_FOCALIN = 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=2016f5c2-95d2-4655-af65-c588c2bf5e6d'
+const DAILYMED_FOCALIN_XR = 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=1a1da905-42a0-4748-9c39-67eca45deccc'
+const DAILYMED_DEXEDRINE = 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=cc717b9b-22ea-4c60-a1d4-ee38a40bce78'
+const DAILYMED_MYDAYIS = 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=141a7970-3f06-44ea-9ab7-aeece2c085fc'
 
 /** Adderall IR tablets are all scored (label: full and partial bisects). */
 const ADDERALL_IR_STRENGTHS: Strength[] = [5, 7.5, 10, 12.5, 15, 20, 30].map((mg) => ({ mg, split: [0.5, 0.25] }))
@@ -169,6 +173,99 @@ export const SUBSTANCES: SubstancePreset[] = [
     ],
   },
   {
+    id: 'focalin',
+    name: 'Focalin',
+    detail: 'Dexmethylphenidate',
+    color: '#BF5AF2',
+    unit: 'mg',
+    defaultAmount: 10,
+    step: 2.5,
+    acuteTolerance: true,
+    reference: { formulation: 'IR', amount: 10 },
+    formulations: [
+      {
+        id: 'IR',
+        label: 'IR',
+        blurb: 'Immediate release tablet. Peaks around 1 to 1.5 hours, half-life about 2.2 hours.',
+        step: 2.5,
+        strengths: [2.5, 5, 10].map((mg) => ({ mg })),
+        halfLifeHours: 2.2,
+        kaPerHour: 1.6,
+        shape: { kind: 'single' },
+      },
+      {
+        id: 'XR',
+        label: 'XR',
+        blurb: 'Half immediate, half delayed beads: a first peak around 1.5 hours and a second around 6.5 hours.',
+        step: 5,
+        strengths: [5, 10, 15, 20, 25, 30, 35, 40].map((mg) => ({ mg })),
+        halfLifeHours: 3,
+        kaPerHour: 1.5,
+        shape: { kind: 'two-pulse', firstFraction: 0.5, delayHours: 5 },
+      },
+    ],
+    sources: [
+      { label: 'Focalin prescribing information (DailyMed)', url: DAILYMED_FOCALIN },
+      { label: 'Focalin XR prescribing information (DailyMed)', url: DAILYMED_FOCALIN_XR },
+    ],
+  },
+  {
+    id: 'dexedrine',
+    name: 'Dexedrine',
+    detail: 'Dextroamphetamine',
+    color: '#FF6482',
+    unit: 'mg',
+    defaultAmount: 10,
+    step: 2.5,
+    acuteTolerance: true,
+    reference: { formulation: 'IR', amount: 10 },
+    formulations: [
+      {
+        id: 'IR',
+        label: 'IR',
+        blurb: 'Immediate release tablet. Peaks around 3 hours, half-life about 12 hours.',
+        step: 2.5,
+        halfLifeHours: 12,
+        kaPerHour: 1.0,
+        shape: { kind: 'single' },
+      },
+      {
+        id: 'spansule',
+        label: 'Spansule',
+        blurb: 'Part released right away, the rest gradually. The label gives a peak around 8 hours; the curve is fitted to that peak and the 12 hour half-life.',
+        step: 5,
+        strengths: [5, 10, 15].map((mg) => ({ mg })),
+        halfLifeHours: 12,
+        kaPerHour: 0.23,
+        shape: { kind: 'single' },
+      },
+    ],
+    sources: [{ label: 'Dexedrine Spansule prescribing information (DailyMed)', url: DAILYMED_DEXEDRINE }],
+  },
+  {
+    id: 'mydayis',
+    name: 'Mydayis',
+    detail: 'Amphetamine salts, three bead types',
+    color: '#32ADE6',
+    unit: 'mg',
+    defaultAmount: 25,
+    step: 12.5,
+    acuteTolerance: true,
+    reference: { formulation: 'cap', amount: 25 },
+    formulations: [
+      {
+        id: 'cap',
+        label: 'Capsule',
+        blurb: 'One immediate and two delayed bead types. The label gives a peak around 8 hours in adults; the curve is fitted to that peak and an 11 hour half-life. Its milligrams do not match other amphetamine products.',
+        strengths: [12.5, 25, 37.5, 50].map((mg) => ({ mg })),
+        halfLifeHours: 11,
+        kaPerHour: 0.22,
+        shape: { kind: 'single' },
+      },
+    ],
+    sources: [{ label: 'Mydayis prescribing information (DailyMed)', url: DAILYMED_MYDAYIS }],
+  },
+  {
     id: 'caffeine',
     name: 'Caffeine',
     detail: 'Coffee, tea, energy drinks',
@@ -272,7 +369,7 @@ export interface Interaction {
 export const INTERACTIONS: Interaction[] = [
   {
     pair: 'Stimulants and alcohol',
-    why: 'The US alcohol research institute lists ADHD stimulants among medicines that react with alcohol: a possible higher risk of heart problems with amphetamines (Adderall, Vyvanse) and dizziness, drowsiness and poor concentration with methylphenidate (Ritalin, Concerta). MedlinePlus adds that alcohol can make methylphenidate side effects worse.',
+    why: 'The US alcohol research institute lists ADHD stimulants among medicines that react with alcohol: a possible higher risk of heart problems with amphetamines (Adderall, Vyvanse, Dexedrine, Mydayis) and dizziness, drowsiness and poor concentration with methylphenidate and dexmethylphenidate (Ritalin, Concerta, Focalin). MedlinePlus adds that alcohol can make methylphenidate side effects worse.',
     sources: [
       { label: 'NIAAA: Harmful interactions, mixing alcohol with medicines', url: 'https://www.niaaa.nih.gov/publications/brochures-and-fact-sheets/harmful-interactions-mixing-alcohol-with-medicines' },
       { label: 'MedlinePlus: Methylphenidate', url: 'https://medlineplus.gov/druginfo/meds/a682188.html' },

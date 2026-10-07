@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Segmented, fieldCls, labelCls } from '../components/LogForms'
 import { PrivacyCheck } from '../components/PrivacyCheck'
+import { InstallSteps } from '../components/Onboarding'
+import { RemindersEditor } from '../components/RemindersEditor'
 import { PHASE_COLOR } from '../lib/phaseStyle'
-import { DEFAULT_SETTINGS, exportData, importData, parseBackup, saveActiveProfile, saveSettings, useActiveProfile, useProfiles, type Settings } from '../db'
+import { DEFAULT_SETTINGS, downloadBackup, importData, parseBackup, saveActiveProfile, saveSettings, useActiveProfile, useProfiles, type Settings } from '../db'
 import { CAFFEINE_METABOLISM, CAFFEINE_METABOLISM_NOTE, INTERACTIONS, SUBSTANCES, getFormulation, getSubstance, overrideKey, type Source } from '../lib/substances'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -168,7 +170,7 @@ function Presets({ settings, focus }: { settings: Settings; focus?: string | nul
   )
 }
 
-export function Learn({ settings, focus }: { settings: Settings; focus?: string | null }) {
+export function Learn({ settings, focus, onShowWelcome }: { settings: Settings; focus?: string | null; onShowWelcome?: () => void }) {
   const profile = useActiveProfile()
   const profiles = useProfiles()
   const presetsRef = useRef<HTMLDivElement>(null)
@@ -179,15 +181,7 @@ export function Learn({ settings, focus }: { settings: Settings; focus?: string 
   const [msg, setMsg] = useState<string | null>(null)
 
   async function onExport(onlyActive = false) {
-    const data = await exportData(onlyActive ? profile.id : undefined)
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    const who = onlyActive ? `-${profile.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : ''
-    a.download = `dose-curve-backup${who}-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    const data = await downloadBackup(onlyActive ? profile.id : undefined)
     setMsg(`Exported ${data.profiles.length === 1 ? data.profiles[0].name + ': ' : ''}${data.doses.length} doses and ${data.checkins.length} check-ins.`)
   }
 
@@ -253,19 +247,6 @@ export function Learn({ settings, focus }: { settings: Settings; focus?: string 
         </dl>
       </Section>
 
-      <Section title={profile.kind === 'child' ? `${profile.name}'s usual day` : 'Your usual day'}>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className={labelCls}>Usual wake time</span>
-            <input type="time" className={fieldCls} value={settings.wakeTime} onChange={(e) => e.target.value && saveActiveProfile({ wakeTime: e.target.value })} />
-          </label>
-          <label className="block">
-            <span className={labelCls}>Usual sleep time</span>
-            <input type="time" className={fieldCls} value={settings.bedtime} onChange={(e) => e.target.value && saveActiveProfile({ sleepTime: e.target.value })} />
-          </label>
-        </div>
-      </Section>
-
       <Section title="What not to mix">
         <p className="mb-3 max-w-[60ch] text-[14px] leading-snug text-muted">
           Common interactions from official sources. This is not a full list. Ask your prescriber or pharmacist about anything else you take.
@@ -279,6 +260,23 @@ export function Learn({ settings, focus }: { settings: Settings; focus?: string 
             </div>
           ))}
         </dl>
+      </Section>
+
+      <Section title={profile.kind === 'child' ? `${profile.name}'s usual day` : 'Your usual day'}>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className={labelCls}>Usual wake time</span>
+            <input type="time" className={fieldCls} value={settings.wakeTime} onChange={(e) => e.target.value && saveActiveProfile({ wakeTime: e.target.value })} />
+          </label>
+          <label className="block">
+            <span className={labelCls}>Usual sleep time</span>
+            <input type="time" className={fieldCls} value={settings.bedtime} onChange={(e) => e.target.value && saveActiveProfile({ sleepTime: e.target.value })} />
+          </label>
+        </div>
+      </Section>
+
+      <Section title="Reminders">
+        <RemindersEditor />
       </Section>
 
       <Section title="Presets">
@@ -322,27 +320,8 @@ export function Learn({ settings, focus }: { settings: Settings; focus?: string 
         </div>
       </Section>
 
-      <Section title="About">
-        <p className="text-[14px] leading-snug text-muted">
-          Dose Curve is free and open source. It shows estimates for personal logging only and does not tell you how much to take or when.
-        </p>
-        <ul className="mt-2 space-y-1">
-          {[
-            ['Privacy policy', `${REPO}/blob/main/PRIVACY.md`],
-            ['Terms of use', `${REPO}/blob/main/TERMS.md`],
-            ['Source code', REPO],
-          ].map(([label, href]) => (
-            <li key={label}>
-              <a href={href} target="_blank" rel="noopener noreferrer" className="text-[15px] text-[var(--onset)] underline decoration-[var(--line)] underline-offset-2">
-                {label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </Section>
-
-      <Section title="Check privacy">
-        <PrivacyCheck />
+      <Section title="Install the app">
+        <InstallSteps />
       </Section>
 
       <Section title="Your data">
@@ -364,6 +343,35 @@ export function Learn({ settings, focus }: { settings: Settings; focus?: string 
         )}
         <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => e.target.files?.[0] && onImport(e.target.files[0])} />
         {msg && <p className="mt-3 text-[14px] text-text">{msg}</p>}
+      </Section>
+
+      <Section title="Check privacy">
+        <PrivacyCheck />
+      </Section>
+
+      <Section title="About">
+        <p className="text-[14px] leading-snug text-muted">
+          Dose Curve is free and open source. It shows estimates for personal logging only and does not tell you how much to take or when.
+        </p>
+        <ul className="mt-2 space-y-1">
+          {[
+            ['Privacy policy', `${REPO}/blob/main/PRIVACY.md`],
+            ['Terms of use', `${REPO}/blob/main/TERMS.md`],
+            ['Source code', REPO],
+            ['Report a problem', `${REPO}/issues`],
+          ].map(([label, href]) => (
+            <li key={label}>
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-[15px] text-[var(--onset)] underline decoration-[var(--line)] underline-offset-2">
+                {label}
+              </a>
+            </li>
+          ))}
+        </ul>
+        {onShowWelcome && (
+          <button type="button" onClick={onShowWelcome} className="mt-3 text-[15px] font-medium text-[var(--onset)]">
+            Show the welcome screens again
+          </button>
+        )}
       </Section>
     </div>
   )

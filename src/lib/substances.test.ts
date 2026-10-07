@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HOUR, computeDay, computeSubstanceDay, shapePeak, type ModelParams } from './model'
+import { HOUR, amountInBody, computeDay, computeSubstanceDay, shapePeak, type ModelParams } from './model'
 import { SUBSTANCES, getSubstance, resolveModel } from './substances'
 
 const T0 = Date.UTC(2026, 9, 6, 7, 0)
@@ -155,5 +155,31 @@ describe('personal half-life', () => {
     const m = resolveModel(getSubstance('adderall'), { 'adderall:XR': { halfLifeHours: 9 } })
     expect(m.formulations.XR.halfLifeHours).toBe(9)
     expect(m.formulations.IR.halfLifeHours).toBe(11)
+  })
+})
+
+describe('added presets match their labels', () => {
+  it('Focalin IR peaks at 1 to 1.5 h; Focalin XR has peaks near 1.5 h and 6.5 h', () => {
+    const ir = shapePeak(10, f('focalin', 'IR')).tMax
+    expect(ir).toBeGreaterThanOrEqual(1)
+    expect(ir).toBeLessThanOrEqual(1.5)
+    // Two local maxima for XR
+    const xr = f('focalin', 'XR')
+    const pts = Array.from({ length: 12 * 60 }, (_, i) => i / 60).map((h) => ({ h, v: amountInBody(20, h, xr) }))
+    const peaks = pts.filter((p, i) => i > 0 && i < pts.length - 1 && p.v > pts[i - 1].v && p.v >= pts[i + 1].v).map((p) => p.h)
+    expect(peaks).toHaveLength(2)
+    expect(peaks[0]).toBeGreaterThan(1)
+    expect(peaks[0]).toBeLessThan(2)
+    expect(peaks[1]).toBeGreaterThan(6)
+    expect(peaks[1]).toBeLessThan(7)
+  })
+
+  it('Dexedrine IR peaks near 3 h and the Spansule near 8 h', () => {
+    expect(shapePeak(10, f('dexedrine', 'IR')).tMax).toBeCloseTo(3, 0)
+    expect(Math.abs(shapePeak(15, f('dexedrine', 'spansule')).tMax - 8)).toBeLessThan(0.5)
+  })
+
+  it('Mydayis peaks near 8 h', () => {
+    expect(Math.abs(shapePeak(25, f('mydayis', 'cap')).tMax - 8)).toBeLessThan(0.5)
   })
 })

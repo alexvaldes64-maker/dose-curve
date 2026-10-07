@@ -56,6 +56,10 @@ export interface Profile {
   overrides?: Overrides
   /** Saved sleep windows for shift work, e.g. "Night shift 18:00 to 09:00". */
   schedulePresets?: { name: string; wake: string; sleep: string }[]
+  /** Substances picked at onboarding; shown first in the dose picker. */
+  favorites?: string[]
+  /** Daily calendar reminders this person set up (exported as .ics). */
+  reminders?: { time: string; label: string }[]
   createdAt: string
 }
 
@@ -97,7 +101,17 @@ export interface Settings {
   overrides?: Overrides
   /** Not stored: the active profile's per-day schedule overrides, merged in by App. */
   daySchedules?: DaySchedules
+  /** First-run onboarding finished. */
+  onboardedAt?: string
+  /** Version of the terms the user acknowledged (see TERMS_VERSION). */
+  termsAccepted?: string
+  /** Last time a full backup was exported, and when the backup reminder may show again. */
+  lastBackupAt?: string
+  backupSnoozedUntil?: string
 }
+
+/** Bump when TERMS.md changes in a way users must see again. */
+export const TERMS_VERSION = '2026-10-06'
 
 export const PROFILE_COLORS = ['#5E5CE6', '#FF9F0A', '#30B0C7', '#FF2D55', '#34C759', '#AF52DE']
 
@@ -331,6 +345,45 @@ export function useSettings(): Settings {
   return { ...DEFAULT_SETTINGS, ...row, id: 1 }
 }
 
+/** Stored settings row, `null` if none yet, `undefined` while loading. */
+export function useStoredSettings(): Settings | null | undefined {
+  return useLiveQuery(async () => (await db.settings.get(1)) ?? null, [])
+}
+
+/** Download a full backup file and remember when, for the backup reminder. */
+export async function downloadBackup(profileId?: number): Promise<Backup> {
+  const data = await exportData(profileId)
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const who = profileId && data.profiles[0] ? `-${data.profiles[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : ''
+  a.download = `dose-curve-backup${who}-${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  if (!profileId) await saveSettings({ lastBackupAt: new Date().toISOString(), backupSnoozedUntil: undefined })
+  return data
+}
+
+/**
+ * Whether to suggest a backup: there is at least a week of data, and no backup in the last 30 days,
+ * unless the reminder was snoozed.
+ */
+export function backupDue(s: Pick<Settings, 'lastBackupAt' | 'backupSnoozedUntil'> | undefined, firstRealDose: string | undefined, now: number): boolean {
+  if (s?.backupSnoozedUntil && Date.parse(s.backupSnoozedUntil) > now) return false
+  if (s?.lastBackupAt && now - Date.parse(s.lastBackupAt) < 30 * 24 * HOUR) return false
+  return !!firstRealDose && now - Date.parse(firstRealDose) > 7 * 24 * HOUR
+}
+
+export function useBackupDue(): boolean {
+  return (
+    useLiveQuery(async () => {
+      const first = (await db.doses.orderBy('takenAt').toArray()).find((d) => !d.sample)
+      return backupDue(await db.settings.get(1), first?.takenAt, Date.now())
+    }, []) ?? false
+  )
+}
+
 export async function saveSettings(patch: Partial<Settings>) {
   const cur = (await db.settings.get(1)) ?? DEFAULT_SETTINGS
   const next: Settings = { ...cur, ...patch, id: 1 }
@@ -467,6 +520,8 @@ export function parseBackup(raw: unknown): Backup {
           sleepTime: p.sleepTime as string,
           overrides: (p.overrides as Overrides | undefined) ?? undefined,
           ...(Array.isArray(p.schedulePresets) ? { schedulePresets: p.schedulePresets as Profile['schedulePresets'] } : {}),
+          ...(Array.isArray(p.favorites) ? { favorites: (p.favorites as unknown[]).map(String) } : {}),
+          ...(Array.isArray(p.reminders) ? { reminders: (p.reminders as Raw[]).filter((r) => isHHMM(r.time)).map((r) => ({ time: r.time as string, label: String(r.label ?? '') })) } : {}),
           createdAt: isIso(p.createdAt) ? (p.createdAt as string) : new Date().toISOString(),
         }
       })

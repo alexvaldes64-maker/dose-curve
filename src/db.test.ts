@@ -215,3 +215,18 @@ describe('fills', () => {
     expect(await db.fills.count()).toBe(0)
   })
 })
+
+describe('backup reminder', () => {
+  it('shows after a week of real data, hides for 30 days after a backup, and respects snooze', async () => {
+    const { backupDue } = await import('./db')
+    const day = 24 * 3600_000
+    const now = Date.parse('2026-10-20T12:00:00Z')
+    const first = new Date(now - 10 * day).toISOString()
+    expect(backupDue(undefined, undefined, now)).toBe(false) // nothing logged
+    expect(backupDue(undefined, new Date(now - 3 * day).toISOString(), now)).toBe(false) // under a week
+    expect(backupDue(undefined, first, now)).toBe(true)
+    expect(backupDue({ lastBackupAt: new Date(now - 5 * day).toISOString() }, first, now)).toBe(false)
+    expect(backupDue({ lastBackupAt: new Date(now - 40 * day).toISOString() }, first, now)).toBe(true)
+    expect(backupDue({ backupSnoozedUntil: new Date(now + day).toISOString() }, first, now)).toBe(false)
+  })
+})

@@ -4,7 +4,9 @@ A private, offline Progressive Web App for logging medication doses and check-in
 
 Estimates only, based on general averages. Not medical advice. Follow your prescriber's instructions.
 
-Free and open source under the [MIT License](LICENSE). See the [privacy policy](PRIVACY.md) and [terms of use](TERMS.md).
+Free and open source under the [MIT License](LICENSE). See the [privacy policy](PRIVACY.md), [terms of use](TERMS.md), [security policy](SECURITY.md), [contributing rules](CONTRIBUTING.md), [code of conduct](CODE_OF_CONDUCT.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
+
+Dose Curve is not a medical device and has not been evaluated by the FDA. In an emergency in the US, call 911 or Poison Control at 1-800-222-1222.
 
 - Vite + React + TypeScript + Tailwind CSS v4
 - Dexie (IndexedDB) for storage. No backend, no accounts, no analytics. Nothing leaves the device.
@@ -71,11 +73,20 @@ Log any of these, each with its own color, curve and phases. Presets fill in hal
 | Adderall | IR, XR | 11 h | IR single; XR two pulses, half now and half 4 h later |
 | Vyvanse | Capsule | 12 h | Single, slower absorption |
 | Ritalin / Concerta | IR, ER | 2.1 h / 3.5 h | IR single; ER 22% now, the rest over 10 h |
+| Focalin | IR, XR | 2.2 h / 3 h | IR single; XR two pulses, peaks near 1.5 h and 6.5 h |
+| Dexedrine | IR, Spansule | 12 h | IR single; Spansule fitted to the label's 8 h peak |
+| Mydayis | Capsule | 11 h | Fitted to the label's 8 h peak |
 | Caffeine | Drink | 5 h | Single, fast absorption, no acute tolerance |
 
 Each substance is scaled to its own reference dose (100%) and drawn as its own line. They are never added together. Learn also has a sourced "What not to mix" list (NIAAA, CDC, FDA labels via DailyMed, MedlinePlus).
 
 ## Profiles, fills, schedules and summaries
+
+- **First run:** four short screens. The only required one is the acknowledgement (estimates only, not medical advice, 18+ or a parent, emergency numbers). If TERMS_VERSION in `src/db.ts` changes, only that screen shows again. Learn > About can replay the welcome.
+- **Reminders:** Learn > Reminders creates a calendar file (.ics) with daily reminders at times you choose. Your calendar does the reminding, so it works offline with no server.
+- **Already logged notice:** logging the same medication within 3 hours of another entry shows the earlier one before you save, so duplicates are easy to spot.
+- **Your logged wear-off:** after 3 days of tapping "It wore off", the Phases card shows your typical logged wear-off time next to the general estimate.
+- **Backup reminder:** after a week of data, Today suggests exporting a backup every 30 days (dismissable).
 
 - **Profiles:** tap the avatar on Today to add a person (for example a child). Each profile has its own doses, check-ins, fills, usual sleep window and timing settings. Child profiles add an appetite rating.
 - **Finer doses:** strength chips come from each FDA label. Scored tablets can be logged as ½ or ¼. Tap the amount to type an exact value (0.25 mg steps).

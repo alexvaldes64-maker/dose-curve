@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
+import { useAllForProfile } from '../db'
+import { observedWearOff } from '../lib/compare'
 import type { Checkin, Dose, Settings } from '../db'
 import type { DayModel, SubstanceDay } from '../hooks/useDayModel'
 import { doseName } from '../lib/substances'
@@ -50,6 +52,8 @@ export function DayCards({
 }) {
   const current = now !== undefined ? phaseAt(m.segments, now) : undefined
   const hasDoses = m.doses.length > 0
+  const all = useAllForProfile()
+  const observed = useMemo(() => observedWearOff(m.id, all.doses, all.checkins), [m.id, all])
   return (
     <>
       <section className="card overflow-hidden">
@@ -85,6 +89,12 @@ export function DayCards({
         <section className="card overflow-hidden">
           <CardHeader title="Phases" />
           <PhaseList segments={m.segments} now={now} current={current} />
+          {observed.days >= 3 && observed.medianHours !== null && (
+            <p className="border-t border-line px-4 py-3 text-[14px] leading-snug text-muted">
+              You usually log {m.preset.name} wearing off about <span className="font-semibold text-text">{observed.medianHours.toFixed(1)} h</span> after your first dose
+              ({observed.days} days logged). The phases above are the general estimate.
+            </p>
+          )}
         </section>
       )}
 

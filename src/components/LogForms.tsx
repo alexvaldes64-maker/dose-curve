@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { HOUR } from '../lib/model'
 import { db, getActiveProfileId, useActiveProfile, useFills, useLastAmount, useLastSubstance, type Checkin, type Dose } from '../db'
 import { fillName } from './FillSheet'
-import { DEFAULT_SUBSTANCE, SPLIT_LABEL, SUBSTANCES, getFormulation, getSubstance, roundDose, splitAmount, stepDose } from '../lib/substances'
+import { DEFAULT_SUBSTANCE, SPLIT_LABEL, SUBSTANCES, getFormulation, getSubstance, roundDose, splitAmount, stepDose, doseName } from '../lib/substances'
 import { FOCUS_COLORS } from '../lib/phaseStyle'
-import { atTime, toTimeInput } from '../lib/time'
+import { atTime, fmtTime, toTimeInput } from '../lib/time'
 import { SIDE_EFFECT_TAGS, fillForDose } from '../lib/compare'
 
 export const fieldCls = 'w-full rounded-xl bg-fill px-3 py-3 text-[16px] text-text outline-none placeholder:text-muted focus:ring-2 focus:ring-[var(--onset)]'
@@ -89,7 +91,9 @@ export function ScorePicker({ value, onChange, name, low, high, colored }: { val
 export function DoseForm({ initial, day, onDone }: { initial?: Dose; day?: Date; onDone?: () => void }) {
   const lastSubstance = useLastSubstance()
   const [picked, setPicked] = useState<string | null>(initial?.substance ?? null)
-  const sub = getSubstance(picked ?? lastSubstance ?? DEFAULT_SUBSTANCE)
+  const favorites = useActiveProfile().favorites ?? []
+  const sub = getSubstance(picked ?? lastSubstance ?? favorites[0] ?? DEFAULT_SUBSTANCE)
+  const ordered = [...SUBSTANCES].sort((x, y) => Number(favorites.includes(y.id)) - Number(favorites.includes(x.id)))
   const [formId, setFormId] = useState<string | null>(initial?.formulation ?? null)
   const form = getFormulation(sub, formId ?? undefined)
   const lastAmount = useLastAmount(sub.id)
@@ -113,6 +117,18 @@ export function DoseForm({ initial, day, onDone }: { initial?: Dose; day?: Date;
   const matchingFills = allFills.filter((f) => f.substance === sub.id && f.formulation === form.id)
   const [fillChoice, setFillChoice] = useState<string>(initial?.fillId ? String(initial.fillId) : 'auto')
   const [time, setTime] = useState(toTimeInput(initial ? Date.parse(initial.takenAt) : Date.now()))
+  // Same substance logged within 3 hours of this time: say so before saving, to avoid duplicate entries.
+  const chosenAt = atTime(initial ? Date.parse(initial.takenAt) : (day ?? new Date()).getTime(), time)
+  const nearby = useLiveQuery(async () => {
+    if (initial) return []
+    const pid = await getActiveProfileId()
+    const iso = (t: number) => new Date(t).toISOString()
+    return db.doses
+      .where('[profileId+takenAt]')
+      .between([pid, iso(chosenAt - 3 * HOUR)], [pid, iso(chosenAt + 3 * HOUR)], true, true)
+      .filter((d) => d.substance === sub.id)
+      .toArray()
+  }, [chosenAt, sub.id, !!initial]) ?? []
   // The fill this dose would link to automatically, for the picker's label.
   const autoFill = fillForDose(
     { profileId: allFills[0]?.profileId ?? 0, substance: sub.id, formulation: form.id, takenAt: new Date(atTime(initial ? Date.parse(initial.takenAt) : (day ?? new Date()).getTime(), time)).toISOString() },
@@ -160,7 +176,7 @@ export function DoseForm({ initial, day, onDone }: { initial?: Dose; day?: Date;
   return (
     <div className="space-y-5">
       <div className="scroll-x -mx-4 flex gap-2 px-4" role="radiogroup" aria-label="Substance">
-        {SUBSTANCES.map((x) => {
+        {ordered.map((x) => {
           const on = x.id === sub.id
           return (
             <button
@@ -267,6 +283,12 @@ export function DoseForm({ initial, day, onDone }: { initial?: Dose; day?: Date;
         <span className={labelCls}>Taken at</span>
         <input type="time" className={fieldCls} value={time} onChange={(e) => setTime(e.target.value)} />
       </label>
+
+      {nearby.length > 0 && !saved && (
+        <p className="rounded-[14px] bg-fill px-3 py-2.5 text-[14px] leading-snug" role="status">
+          Already logged: {nearby.map((d) => `${doseName(d)} at ${fmtTime(Date.parse(d.takenAt))}`).join(', ')}. Saving adds another entry.
+        </p>
+      )}
 
       <div className="flex gap-2">
         {initial && (
