@@ -183,3 +183,14 @@ describe('added presets match their labels', () => {
     expect(Math.abs(shapePeak(25, f('mydayis', 'cap')).tMax - 8)).toBeLessThan(0.5)
   })
 })
+
+describe('once-daily flags', () => {
+  it('flags every long-acting formulation and no immediate-release one', () => {
+    for (const sub of SUBSTANCES)
+      for (const f of sub.formulations) {
+        const longActing = f.shape.kind !== 'single' || f.halfLifeHours >= 10 && f.kaPerHour < 0.9 || ['spansule', 'ER'].includes(f.id)
+        if (sub.id === 'caffeine') expect(f.onceDaily).toBeUndefined()
+        else expect(!!f.onceDaily).toBe(longActing)
+      }
+  })
+})

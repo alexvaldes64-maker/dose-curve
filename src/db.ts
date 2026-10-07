@@ -27,7 +27,7 @@ export interface Dose {
   split?: 0.5 | 0.25
 }
 
-export type CheckinKind = 'rating' | 'wore_off' | 'side_effect'
+export type CheckinKind = 'rating' | 'wore_off' | 'side_effect' | 'skipped'
 
 export interface Checkin {
   id?: number
@@ -45,6 +45,8 @@ export interface Checkin {
   substance?: string
   /** Context for the day, kept apart from side effects (e.g. "Period or PMS week"). */
   context?: string[]
+  /** For "skipped" entries: why (see SKIP_REASONS). */
+  reason?: string
 }
 
 export interface Profile {
@@ -77,6 +79,10 @@ export interface Fill {
   /** Optional, from the pharmacy label: National Drug Code and lot number. */
   ndc?: string
   lot?: string
+  /** Tablets or capsules in the fill, for days of supply. */
+  quantity?: number
+  /** Days before running out to put a refill reminder in the calendar. */
+  refillLeadDays?: number
   filledAt: string
   note?: string
 }
@@ -327,8 +333,8 @@ export function useAllForProfile() {
 }
 
 /** Record that a substance wore off, now. */
-export async function logWoreOff(substance: string, at = Date.now()) {
-  await db.checkins.add({ profileId: await getActiveProfileId(), kind: 'wore_off', substance, at: new Date(at).toISOString(), focus: 0, mood: 0 })
+export async function logWoreOff(substance: string, at = Date.now()): Promise<number> {
+  return (await db.checkins.add({ profileId: await getActiveProfileId(), kind: 'wore_off', substance, at: new Date(at).toISOString(), focus: 0, mood: 0 })) as number
 }
 
 export async function saveActiveProfile(patch: Partial<Profile>) {
@@ -500,7 +506,7 @@ const isIso = (s: unknown) => typeof s === 'string' && !Number.isNaN(Date.parse(
 const inRange = (n: unknown, lo: number, hi: number) => typeof n === 'number' && n >= lo && n <= hi
 const isHHMM = (s: unknown) => typeof s === 'string' && /^\d{2}:\d{2}$/.test(s)
 const optId = (n: unknown) => (typeof n === 'number' && Number.isInteger(n) && n > 0 ? n : undefined)
-const CHECKIN_KINDS: CheckinKind[] = ['rating', 'wore_off', 'side_effect']
+const CHECKIN_KINDS: CheckinKind[] = ['rating', 'wore_off', 'side_effect', 'skipped']
 
 type Raw = Record<string, unknown>
 
@@ -552,6 +558,8 @@ export function parseBackup(raw: unknown): Backup {
           manufacturer: String(f.manufacturer ?? ''),
           ...(f.pharmacy ? { pharmacy: String(f.pharmacy) } : {}),
           ...(f.ndc ? { ndc: String(f.ndc) } : {}),
+          ...(typeof f.quantity === 'number' && f.quantity > 0 ? { quantity: f.quantity } : {}),
+          ...(typeof f.refillLeadDays === 'number' && f.refillLeadDays >= 0 ? { refillLeadDays: f.refillLeadDays } : {}),
           ...(f.lot ? { lot: String(f.lot) } : {}),
           filledAt: f.filledAt as string,
           ...(f.note ? { note: String(f.note) } : {}),
@@ -591,6 +599,7 @@ export function parseBackup(raw: unknown): Backup {
       ...(inRange(c.appetite, 1, 5) ? { appetite: c.appetite as number } : {}),
       ...(typeof c.substance === 'string' ? { substance: c.substance } : {}),
       ...(Array.isArray(c.context) ? { context: (c.context as unknown[]).map(String) } : {}),
+      ...(typeof c.reason === 'string' ? { reason: c.reason } : {}),
     }
   })
 

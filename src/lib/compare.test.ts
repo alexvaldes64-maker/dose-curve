@@ -84,3 +84,39 @@ describe('observedWearOff', () => {
     expect(observedWearOff('vyvanse', doses, checkins)).toEqual({ days: 0, medianHours: null })
   })
 })
+
+import { supplyFor, type SupplyDose, type SupplyFill } from './compare'
+
+describe('supplyFor', () => {
+  const fill: SupplyFill = { id: 7, profileId: 1, substance: 'adderall', formulation: 'IR', filledAt: t(1, 9), strengthMg: 20, quantity: 30 }
+  const d = (day: number, h: number, mg: number): SupplyDose => ({ profileId: 1, substance: 'adderall', formulation: 'IR', takenAt: t(day, h), mg })
+
+  it('counts whole and split tablets and projects days left at the logged pace', () => {
+    // Oct 2 to 7: 20 mg in the morning, 10 mg (half a tablet) after lunch = 1.5 tablets a day
+    const doses = [2, 3, 4, 5, 6, 7].flatMap((day) => [d(day, 8, 20), d(day, 13, 10)])
+    const now = Date.parse(t(7, 20))
+    const s = supplyFor(fill, [fill], doses, now)!
+    expect(s.used).toBe(9)
+    expect(s.left).toBe(21)
+    expect(s.perDay).toBeGreaterThan(1.3)
+    expect(s.perDay).toBeLessThan(1.6)
+    expect(s.daysLeft).toBeGreaterThan(13)
+    expect(s.daysLeft).toBeLessThan(16)
+    expect(s.runOut!.getTime()).toBeGreaterThan(now)
+  })
+
+  it('needs a count, and three logged days before projecting', () => {
+    expect(supplyFor({ ...fill, quantity: undefined }, [fill], [], Date.parse(t(5, 9)))).toBeNull()
+    const s = supplyFor(fill, [fill], [d(2, 8, 20), d(3, 8, 20)], Date.parse(t(3, 20)))!
+    expect(s.left).toBe(28)
+    expect(s.perDay).toBeNull()
+    expect(s.runOut).toBeNull()
+  })
+
+  it('never goes below zero and ignores doses from other fills or people', () => {
+    const doses = [d(2, 8, 20), { ...d(2, 9, 20), profileId: 2 }, { ...d(2, 10, 20), fillId: 99 }]
+    const s = supplyFor({ ...fill, quantity: 0.5 }, [fill], doses, Date.parse(t(3, 9)))!
+    expect(s.used).toBe(1)
+    expect(s.left).toBe(0)
+  })
+})

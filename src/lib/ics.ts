@@ -58,3 +58,49 @@ export function buildIcs(reminders: Reminder[], from: Date, now = new Date()): s
   lines.push('END:VCALENDAR')
   return lines.map(fold).join('\r\n') + '\r\n'
 }
+
+export interface OneOffEvent {
+  /** Local calendar day. */
+  date: Date
+  time: string // "HH:MM"
+  label: string
+  description?: string
+}
+
+/** Single (non-repeating) events with an alert, e.g. a refill reminder. */
+export function buildEventsIcs(events: OneOffEvent[], now = new Date()): string {
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Dose Curve//Reminders//EN', 'CALSCALE:GREGORIAN']
+  events.forEach((e, i) => {
+    const day = `${e.date.getFullYear()}${pad(e.date.getMonth() + 1)}${pad(e.date.getDate())}`
+    const [h, m] = e.time.split(':')
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:dose-curve-once-${day}-${i}-${h}${m}@dose-curve.local`,
+      `DTSTAMP:${stamp(now)}`,
+      `DTSTART:${day}T${h}${m}00`,
+      'DURATION:PT5M',
+      `SUMMARY:${icsText(e.label)}`,
+      `DESCRIPTION:${icsText(e.description ?? 'From Dose Curve.')}`,
+      'TRANSP:TRANSPARENT',
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${icsText(e.label)}`,
+      'TRIGGER:PT0M',
+      'END:VALARM',
+      'END:VEVENT',
+    )
+  })
+  lines.push('END:VCALENDAR')
+  return lines.map(fold).join('\r\n') + '\r\n'
+}
+
+/** Save an .ics file through the browser's download. */
+export function downloadIcs(text: string, filename: string) {
+  const blob = new Blob([text], { type: 'text/calendar' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}

@@ -89,6 +89,11 @@ Each substance is scaled to its own reference dose (100%) and drawn as its own l
 - **Already logged notice:** logging the same medication within 3 hours of another entry shows the earlier one before you save, so duplicates are easy to spot.
 - **Your logged wear-off:** after 3 days of tapping "It wore off", the Phases card shows your typical logged wear-off time next to the general estimate.
 - **Backup reminder:** after a week of data, Today suggests exporting a backup every 30 days (dismissable).
+- **"Did I take it?":** Today's first line shows the last logged dose and how long ago, or that a dose was skipped.
+- **Skipped or paused:** log a day you did not take a medication, with a reason (planned break, forgot, could not get a refill, side effects, prescriber paused it, other). It appears in the prescriber summary and CSV.
+- **Undo:** every log offers Undo for 8 seconds.
+- **Already logged:** once-a-day medications (XR, Vyvanse, Concerta style ER, Spansule, Mydayis) check the whole day; others check 3 hours either side.
+- **Days of supply:** add a count to a fill and Log shows about how many are left and, after 3 days of doses, about how many days at your logged pace, with a one-tap refill reminder for your calendar.
 
 - **Profiles:** tap the avatar on Today to add a person (for example a child). Each profile has its own doses, check-ins, fills, usual sleep window and timing settings. Child profiles add an appetite rating.
 - **Finer doses:** strength chips come from each FDA label. Scored tablets can be logged as ½ or ¼. Tap the amount to type an exact value (0.25 mg steps).

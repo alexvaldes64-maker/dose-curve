@@ -16,6 +16,7 @@ export interface SumCheckin extends CheckinLike {
   note?: string
   appetite?: number
   context?: string[]
+  reason?: string
 }
 export interface SumFill extends FillLike {
   id?: number
@@ -68,6 +69,9 @@ export interface SubstanceSummary {
   /** Median hours from first dose to the first "wore off" check-in, and on how many days. */
   woreOffMedianHours: number | null
   woreOffDays: number
+  /** Days logged as skipped or paused, and why. */
+  skippedDays: number
+  skipReasons: { reason: string; count: number }[]
   rows: { date: string; time: string; what: string; fill: string }[]
 }
 
@@ -107,7 +111,8 @@ export function buildSummary(input: SummaryInput): Summary {
   }
 
   // Per substance
-  const ids = [...new Set(doses.map((d) => d.substance))]
+  const skips = checkins.filter((c) => c.kind === 'skipped' && c.substance)
+  const ids = [...new Set([...doses.map((d) => d.substance), ...skips.map((c) => c.substance!)])]
   const substances: SubstanceSummary[] = ids.map((id) => {
     const preset = getSubstance(id)
     const mine = doses.filter((d) => d.substance === id)
@@ -124,6 +129,9 @@ export function buildSummary(input: SummaryInput): Summary {
       if (wo !== undefined) woreOff.push(wo)
     }
     const typical = median(firsts.map(minutesOfDay))
+    const mySkips = skips.filter((c) => c.substance === id)
+    const reasonCounts = new Map<string, number>()
+    for (const c of mySkips) reasonCounts.set(c.reason ?? 'Other', (reasonCounts.get(c.reason ?? 'Other') ?? 0) + 1)
     return {
       id,
       name: preset.name,
@@ -134,6 +142,8 @@ export function buildSummary(input: SummaryInput): Summary {
       typicalFirstDose: typical === null ? null : fmtMinutes(typical),
       woreOffMedianHours: median(woreOff),
       woreOffDays: woreOff.length,
+      skippedDays: new Set(mySkips.map((c) => dateKey(Date.parse(c.at)))).size,
+      skipReasons: [...reasonCounts].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count),
       rows: mine.map((d) => {
         const t = Date.parse(d.takenAt)
         const split = splitNote(d)
@@ -280,7 +290,7 @@ export function toCsv(input: Pick<SummaryInput, 'doses' | 'checkins' | 'fills' |
       t,
       cells: [
         profileName,
-        c.kind === 'wore_off' ? 'wore_off' : 'check_in',
+        c.kind === 'wore_off' ? 'wore_off' : c.kind === 'skipped' ? 'skipped' : 'check_in',
         dateKey(t),
         fmtTime(t),
         c.substance ? getSubstance(c.substance).name : '',
@@ -293,7 +303,7 @@ export function toCsv(input: Pick<SummaryInput, 'doses' | 'checkins' | 'fills' |
         c.appetite ?? '',
         (c.tags ?? []).join('; '),
         (c.context ?? []).join('; '),
-        c.note ?? '',
+        [c.reason ? `Reason: ${c.reason}` : '', c.note ?? ''].filter(Boolean).join('. '),
       ],
     })
   }

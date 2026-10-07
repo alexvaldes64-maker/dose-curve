@@ -89,7 +89,7 @@ export function SpanHill({ m, others = [], now, showPlasma }: { m: DayModel; oth
             <circle key={d.id} cx={x(Date.parse(d.takenAt))} cy={base} r={4.5} fill="var(--card)" stroke="var(--text)" strokeWidth={2} />
           ))}
           {m.checkins
-            .filter((c) => c.kind !== 'wore_off')
+            .filter((c) => c.kind === 'rating')
             .map((c) => (
               <circle key={c.id} cx={x(Date.parse(c.at))} cy={y(levelAt(m.samples, Date.parse(c.at)))} r={4} fill={FOCUS_COLORS[c.focus - 1]} stroke="var(--card)" strokeWidth={1.5} />
             ))}

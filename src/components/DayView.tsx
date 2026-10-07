@@ -84,7 +84,7 @@ export function DayView({ m, settings, now, onDose, onCheckin }: Props) {
             </EventCard>
           ))}
 
-          {m.checkins.filter((c) => c.kind !== 'wore_off').map((c) => {
+          {m.checkins.filter((c) => c.kind === 'rating').map((c) => {
             const p = at(Date.parse(c.at))
             return (
               <button

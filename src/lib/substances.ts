@@ -23,6 +23,8 @@ export interface FormulationPreset extends FormulationModel {
   step?: number
   /** Strengths from the FDA label (DOSAGE FORMS AND STRENGTHS). */
   strengths?: Strength[]
+  /** Long-acting, labeled for once a day: the "already logged" check looks at the whole day, not 3 hours. */
+  onceDaily?: boolean
 }
 
 /** Round a typed or computed amount to the nearest 0.25 mg. */
@@ -94,6 +96,7 @@ export const SUBSTANCES: SubstancePreset[] = [
         id: 'XR',
         label: 'XR',
         blurb: 'Two bead types: half now, half about 4 hours later. Peaks around 7 hours.',
+        onceDaily: true,
         step: 5,
         strengths: [5, 10, 15, 20, 25, 30].map((mg) => ({ mg })),
         halfLifeHours: 11,
@@ -122,6 +125,7 @@ export const SUBSTANCES: SubstancePreset[] = [
         id: 'cap',
         label: 'Capsule',
         blurb: 'Converted to dextroamphetamine in the body, so it builds gradually. Blood levels peak around 3.5 hours.',
+        onceDaily: true,
         strengths: [10, 20, 30, 40, 50, 60, 70].map((mg) => ({ mg })),
         halfLifeHours: 12,
         kaPerHour: 0.8,
@@ -158,6 +162,7 @@ export const SUBSTANCES: SubstancePreset[] = [
         id: 'ER',
         label: 'ER',
         blurb: 'Slow release (Concerta style): about 22% right away, the rest released steadily over about 10 hours.',
+        onceDaily: true,
         step: 9,
         strengths: [18, 27, 36, 54].map((mg) => ({ mg })),
         halfLifeHours: 3.5,
@@ -197,6 +202,7 @@ export const SUBSTANCES: SubstancePreset[] = [
         id: 'XR',
         label: 'XR',
         blurb: 'Half immediate, half delayed beads: a first peak around 1.5 hours and a second around 6.5 hours.',
+        onceDaily: true,
         step: 5,
         strengths: [5, 10, 15, 20, 25, 30, 35, 40].map((mg) => ({ mg })),
         halfLifeHours: 3,
@@ -233,6 +239,7 @@ export const SUBSTANCES: SubstancePreset[] = [
         id: 'spansule',
         label: 'Spansule',
         blurb: 'Part released right away, the rest gradually. The label gives a peak around 8 hours; the curve is fitted to that peak and the 12 hour half-life.',
+        onceDaily: true,
         step: 5,
         strengths: [5, 10, 15].map((mg) => ({ mg })),
         halfLifeHours: 12,
@@ -257,6 +264,7 @@ export const SUBSTANCES: SubstancePreset[] = [
         id: 'cap',
         label: 'Capsule',
         blurb: 'One immediate and two delayed bead types. The label gives a peak around 8 hours in adults; the curve is fitted to that peak and an 11 hour half-life. Its milligrams do not match other amphetamine products.',
+        onceDaily: true,
         strengths: [12.5, 25, 37.5, 50].map((mg) => ({ mg })),
         halfLifeHours: 11,
         kaPerHour: 0.22,

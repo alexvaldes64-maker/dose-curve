@@ -11,6 +11,8 @@ const checkins: SumCheckin[] = [
   { profileId: 1, kind: 'rating', at: t(3, 15), focus: 2, mood: 3, note: 'crashed after lunch', context: ['Period or PMS week'] }, // afternoon, 6.5 h
   { profileId: 1, kind: 'wore_off', substance: 'adderall', at: t(2, 13), focus: 0, mood: 0 }, // 5 h
   { profileId: 1, kind: 'wore_off', substance: 'adderall', at: t(3, 14, 30), focus: 0, mood: 0 }, // 6 h
+  { profileId: 1, kind: 'skipped', substance: 'adderall', reason: 'Planned break', at: t(6, 9), focus: 0, mood: 0 },
+  { profileId: 1, kind: 'skipped', substance: 'vyvanse', reason: 'Could not get a refill', at: t(6, 9), focus: 0, mood: 0 },
 ]
 const base = { doses, checkins, fills, from: new Date(2026, 9, 1), to: new Date(2026, 9, 7), model: 'simple' as const, toleranceRate: 0.12 }
 
@@ -19,7 +21,7 @@ describe('prescriber summary', () => {
 
   it('covers the range and lists each substance', () => {
     expect(s.totalDays).toBe(7)
-    expect(s.substances.map((x) => x.id).sort()).toEqual(['adderall', 'caffeine'])
+    expect(s.substances.map((x) => x.id).sort()).toEqual(['adderall', 'caffeine', 'vyvanse'])
   })
 
   it('describes dosing days, typical first dose time and observed wear-off', () => {
@@ -29,6 +31,10 @@ describe('prescriber summary', () => {
     expect(a.typicalFirstDose).toBe('8:30a') // median of 8:00, 8:30, 9:00
     expect(a.woreOffDays).toBe(2)
     expect(a.woreOffMedianHours).toBe(5.5)
+    expect(a.skippedDays).toBe(1)
+    expect(a.skipReasons).toEqual([{ reason: 'Planned break', count: 1 }])
+    const v = s.substances.find((x) => x.id === 'vyvanse')!
+    expect(v).toMatchObject({ doseCount: 0, skippedDays: 1 })
     expect(a.rows.at(-1)).toMatchObject({ what: '10 mg Adderall IR (½ of 20 mg)', fill: 'Teva, CVS' })
   })
 
@@ -80,6 +86,8 @@ describe('CSV', () => {
     expect(lines).toHaveLength(1 + doses.length + checkins.length)
     expect(lines[1]).toBe('Me,dose,2026-10-02,8:00a,Adderall,IR,20,,Teva lot A123,,,,,,')
     expect(csv).toContain('Period or PMS week')
+    expect(csv).toContain(',skipped,')
+    expect(csv).toContain('Reason: Planned break')
     expect(csv).toContain('wore_off')
     expect(csv).toContain('0.5 of 20')
   })

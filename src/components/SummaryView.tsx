@@ -130,12 +130,13 @@ export function SummaryView({ settings, onClose }: { settings: Settings; onClose
         {s.substances.map((x) => (
           <Section key={x.id} title={x.name}>
             <p>
-              Logged on {x.daysWithDose} of {x.totalDays} days, {x.doseCount} {x.doseCount === 1 ? 'dose' : 'doses'}.
+              Doses logged on {x.daysWithDose} of {x.totalDays} days, {x.doseCount} {x.doseCount === 1 ? 'dose' : 'doses'}.
               {x.typicalFirstDose && ` Typical first dose ${x.typicalFirstDose}.`}
               {x.id !== 'caffeine' &&
                 (x.woreOffDays
                   ? ` "Wore off" logged on ${x.woreOffDays} ${x.woreOffDays === 1 ? 'day' : 'days'}, median ${x.woreOffMedianHours!.toFixed(1)} h after the first dose.`
                   : ' No "wore off" times logged.')}
+              {x.skippedDays > 0 && ` Logged as skipped on ${x.skippedDays} ${x.skippedDays === 1 ? 'day' : 'days'} (${x.skipReasons.map((r) => `${r.reason.toLowerCase()} ${r.count}`).join(', ')}).`}
             </p>
             <table className="mt-2 w-full text-left text-[13px]">
               <thead>

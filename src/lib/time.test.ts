@@ -52,9 +52,9 @@ describe('day windows', () => {
 describe('fmtAgo', () => {
   it('reads naturally', () => {
     expect(fmtAgo(20_000)).toBe('just now')
-    expect(fmtAgo(12 * 60_000)).toBe('12 min')
-    expect(fmtAgo(3 * HOUR + 12 * 60_000)).toBe('3 h 12 min')
-    expect(fmtAgo(2 * HOUR)).toBe('2 h')
-    expect(fmtAgo(30 * HOUR)).toBe('1 day')
+    expect(fmtAgo(12 * 60_000)).toBe('12 min ago')
+    expect(fmtAgo(3 * HOUR + 12 * 60_000)).toBe('3 h 12 min ago')
+    expect(fmtAgo(2 * HOUR)).toBe('2 h ago')
+    expect(fmtAgo(30 * HOUR)).toBe('1 day ago')
   })
 })

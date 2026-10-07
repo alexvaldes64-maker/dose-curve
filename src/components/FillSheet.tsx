@@ -18,6 +18,8 @@ export function FillSheet({ initial, onClose }: { initial?: Fill & { id?: number
   const [date, setDate] = useState(initial ? dateKey(Date.parse(initial.filledAt)) : dateKey(Date.now()))
   const [note, setNote] = useState(initial?.note ?? '')
   const [ndc, setNdc] = useState(initial?.ndc ?? '')
+  const [quantity, setQuantity] = useState(initial?.quantity ? String(initial.quantity) : '')
+  const [lead, setLead] = useState(String(initial?.refillLeadDays ?? 5))
   const [lot, setLot] = useState(initial?.lot ?? '')
   const known = [...new Set(fills.map((f) => f.manufacturer).filter(Boolean))]
   const knownPharmacies = [...new Set(fills.map((f) => f.pharmacy).filter((x): x is string => !!x))]
@@ -38,6 +40,8 @@ export function FillSheet({ initial, onClose }: { initial?: Fill & { id?: number
       filledAt: new Date(y, m - 1, d, 12).toISOString(),
       ...(note.trim() ? { note: note.trim() } : {}),
       ...(ndc.trim() ? { ndc: ndc.trim() } : {}),
+      ...(Number(quantity) > 0 ? { quantity: Number(quantity) } : {}),
+      ...(Number(quantity) > 0 && Number(lead) >= 0 ? { refillLeadDays: Math.round(Number(lead)) } : {}),
       ...(lot.trim() ? { lot: lot.trim() } : {}),
     })
     onClose()
@@ -122,6 +126,17 @@ export function FillSheet({ initial, onClose }: { initial?: Fill & { id?: number
             <input type="date" className={fieldCls} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className={labelCls}>Count in the fill</span>
+            <input className={fieldCls} inputMode="numeric" type="number" min={1} placeholder="e.g. 30" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className={labelCls}>Refill reminder, days before</span>
+            <input className={fieldCls} inputMode="numeric" type="number" min={0} max={30} value={lead} onChange={(e) => setLead(e.target.value)} />
+          </label>
+        </div>
+        <p className="-mt-3 text-[13px] text-muted">Optional. With a count, the app shows about how many are left and how many days that is at your logged pace.</p>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className={labelCls}>NDC (optional)</span>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { TabBar, type Tab } from './components/TabBar'
 import { TERMS_VERSION, ensureProfile, requestPersistence, useActiveProfile, useDaySchedules, useSettings, useStoredSettings, type Settings } from './db'
 import { Onboarding } from './components/Onboarding'
+import { UndoToast } from './components/UndoToast'
 import { History } from './screens/History'
 import { Learn } from './screens/Learn'
 import { Log } from './screens/Log'
@@ -46,6 +47,7 @@ export default function App() {
       {tab === 'history' && <History settings={settings} onAdjust={adjust} />}
       {tab === 'learn' && <Learn settings={settings} focus={learnFocus} onShowWelcome={() => setReplayWelcome(true)} />}
       <TabBar tab={tab} onChange={changeTab} />
+      <UndoToast />
       {(needsOnboarding || needsTerms) && (
         <Onboarding
           settings={settings}

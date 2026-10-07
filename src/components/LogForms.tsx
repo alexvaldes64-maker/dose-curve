@@ -5,8 +5,9 @@ import { db, getActiveProfileId, useActiveProfile, useFills, useLastAmount, useL
 import { fillName } from './FillSheet'
 import { DEFAULT_SUBSTANCE, SPLIT_LABEL, SUBSTANCES, getFormulation, getSubstance, roundDose, splitAmount, stepDose, doseName } from '../lib/substances'
 import { FOCUS_COLORS } from '../lib/phaseStyle'
-import { atTime, fmtTime, toTimeInput } from '../lib/time'
-import { CONTEXT_TAGS, SIDE_EFFECT_TAGS, fillForDose } from '../lib/compare'
+import { atTime, fmtTime, startOfLocalDay, toTimeInput } from '../lib/time'
+import { offerUndo } from '../lib/undo'
+import { CONTEXT_TAGS, SIDE_EFFECT_TAGS, SKIP_REASONS, fillForDose } from '../lib/compare'
 
 export const fieldCls = 'w-full rounded-xl bg-fill px-3 py-3 text-[16px] text-text outline-none placeholder:text-muted focus:ring-2 focus:ring-[var(--onset)]'
 export const labelCls = 'mb-1.5 block text-[14px] text-muted'
@@ -117,18 +118,22 @@ export function DoseForm({ initial, day, onDone }: { initial?: Dose; day?: Date;
   const matchingFills = allFills.filter((f) => f.substance === sub.id && f.formulation === form.id)
   const [fillChoice, setFillChoice] = useState<string>(initial?.fillId ? String(initial.fillId) : 'auto')
   const [time, setTime] = useState(toTimeInput(initial ? Date.parse(initial.takenAt) : Date.now()))
-  // Same substance logged within 3 hours of this time: say so before saving, to avoid duplicate entries.
+  // Same substance already logged nearby: say so before saving, to avoid duplicate entries.
+  // Once-a-day (long-acting) formulations check the whole calendar day; others check 3 hours either side.
   const chosenAt = atTime(initial ? Date.parse(initial.takenAt) : (day ?? new Date()).getTime(), time)
+  const wholeDay = !!form.onceDaily
   const nearby = useLiveQuery(async () => {
     if (initial) return []
     const pid = await getActiveProfileId()
     const iso = (t: number) => new Date(t).toISOString()
+    const from = wholeDay ? startOfLocalDay(chosenAt).getTime() : chosenAt - 3 * HOUR
+    const to = wholeDay ? from + 24 * HOUR : chosenAt + 3 * HOUR
     return db.doses
       .where('[profileId+takenAt]')
-      .between([pid, iso(chosenAt - 3 * HOUR)], [pid, iso(chosenAt + 3 * HOUR)], true, true)
+      .between([pid, iso(from)], [pid, iso(to)], true, false)
       .filter((d) => d.substance === sub.id)
       .toArray()
-  }, [chosenAt, sub.id, !!initial]) ?? []
+  }, [chosenAt, sub.id, !!initial, wholeDay]) ?? []
   // The fill this dose would link to automatically, for the picker's label.
   const autoFill = fillForDose(
     { profileId: allFills[0]?.profileId ?? 0, substance: sub.id, formulation: form.id, takenAt: new Date(atTime(initial ? Date.parse(initial.takenAt) : (day ?? new Date()).getTime(), time)).toISOString() },
@@ -160,7 +165,10 @@ export function DoseForm({ initial, day, onDone }: { initial?: Dose; day?: Date;
       takenAt,
     }
     if (initial?.id) await db.doses.update(initial.id, row)
-    else await db.doses.add(row)
+    else {
+      const id = (await db.doses.add(row)) as number
+      offerUndo(`Logged ${doseName(row)} at ${fmtTime(Date.parse(row.takenAt))}.`, () => db.doses.delete(id))
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 1200)
     onDone?.()
@@ -286,7 +294,7 @@ export function DoseForm({ initial, day, onDone }: { initial?: Dose; day?: Date;
 
       {nearby.length > 0 && !saved && (
         <p className="rounded-[14px] bg-fill px-3 py-2.5 text-[14px] leading-snug" role="status">
-          Already logged: {nearby.map((d) => `${doseName(d)} at ${fmtTime(Date.parse(d.takenAt))}`).join(', ')}. Saving adds another entry.
+          Already logged {wholeDay ? 'today' : 'within 3 hours'}: {nearby.map((d) => `${doseName(d)} at ${fmtTime(Date.parse(d.takenAt))}`).join(', ')}. Saving adds another entry.
         </p>
       )}
 
@@ -333,7 +341,10 @@ export function CheckinForm({ initial, day, onDone }: { initial?: Checkin; day?:
       ...(initial?.substance ? { substance: initial.substance } : {}),
     }
     if (initial?.id) await db.checkins.put({ ...row, id: initial.id })
-    else await db.checkins.add(row)
+    else {
+      const id = (await db.checkins.add(row)) as number
+      offerUndo('Check-in saved.', () => db.checkins.delete(id))
+    }
     if (!initial) {
       setNote('')
       setTags([])
@@ -451,4 +462,114 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
       ))}
     </div>
   )
+}
+
+/** Record that a dose was not taken (paused or skipped), with a reason. Logged as given, never judged. */
+export function SkipForm({ initial, onDone }: { initial?: Checkin; onDone?: () => void }) {
+  const favorites = useActiveProfile().favorites ?? []
+  const lastSubstance = useLastSubstance()
+  const meds = SUBSTANCES.filter((x) => x.id !== 'caffeine').sort((x, y) => Number(favorites.includes(y.id)) - Number(favorites.includes(x.id)))
+  const [subId, setSubId] = useState(initial?.substance ?? (lastSubstance && lastSubstance !== 'caffeine' ? lastSubstance : meds[0].id))
+  const [reason, setReason] = useState<string>(initial?.reason ?? '')
+  const [date, setDate] = useState(dateKeyOf(initial ? Date.parse(initial.at) : Date.now()))
+  const [note, setNote] = useState(initial?.note ?? '')
+
+  async function save() {
+    if (!reason) return
+    const [y, m, d] = date.split('-').map(Number)
+    const isToday = date === dateKeyOf(Date.now())
+    const at = initial ? new Date(Date.parse(initial.at)) : isToday ? new Date() : new Date(y, m - 1, d, 12)
+    if (!initial) at.setFullYear(y, m - 1, d)
+    const row: Checkin = {
+      profileId: initial?.profileId ?? (await getActiveProfileId()),
+      kind: 'skipped',
+      substance: subId,
+      reason,
+      at: at.toISOString(),
+      focus: 0,
+      mood: 0,
+      ...(note.trim() ? { note: note.trim() } : {}),
+    }
+    if (initial?.id) await db.checkins.put({ ...row, id: initial.id })
+    else {
+      const id = (await db.checkins.add(row)) as number
+      offerUndo(`Logged ${getSubstance(subId).name} as skipped.`, () => db.checkins.delete(id))
+      setReason('')
+      setNote('')
+    }
+    onDone?.()
+  }
+
+  async function remove() {
+    if (initial?.id && confirm('Delete this entry?')) {
+      await db.checkins.delete(initial.id)
+      onDone?.()
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <p className="text-[14px] leading-snug text-muted">For days you did not take it, on purpose or not. Useful context for your prescriber.</p>
+      <div className="scroll-x -mx-4 flex gap-2 px-4" role="radiogroup" aria-label="Medication">
+        {meds.map((x) => {
+          const on = x.id === subId
+          return (
+            <button
+              key={x.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => setSubId(x.id)}
+              className={`flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-[15px] font-medium ${on ? 'bg-text text-card' : 'bg-fill text-text'}`}
+            >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: x.color }} />
+              {x.name}
+            </button>
+          )
+        })}
+      </div>
+      <div>
+        <span className={labelCls}>Reason</span>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Reason">
+          {SKIP_REASONS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              role="radio"
+              aria-checked={reason === r}
+              onClick={() => setReason(r)}
+              className={`rounded-full px-3 py-1.5 text-[14px] ${reason === r ? 'bg-text text-card' : 'bg-fill text-text'}`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-[auto_1fr] gap-3">
+        <label className="block">
+          <span className={labelCls}>Day</span>
+          <input type="date" className={fieldCls} value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
+        </label>
+        <label className="block">
+          <span className={labelCls}>Note</span>
+          <input className={fieldCls} value={note} placeholder="Optional" onChange={(e) => setNote(e.target.value)} />
+        </label>
+      </div>
+      <div className="flex gap-2">
+        {initial && (
+          <button type="button" className={danger} onClick={remove}>
+            Delete
+          </button>
+        )}
+        <button type="button" className={primary} onClick={save} disabled={!reason}>
+          {initial ? 'Save changes' : 'Log as skipped'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const dateKeyOf = (t: number) => {
+  const d = new Date(t)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }

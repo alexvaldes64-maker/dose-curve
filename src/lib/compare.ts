@@ -20,7 +20,7 @@ export interface DoseLike {
 }
 export interface CheckinLike {
   profileId: number
-  kind: 'rating' | 'wore_off' | 'side_effect'
+  kind: 'rating' | 'wore_off' | 'side_effect' | 'skipped'
   at: string
   focus: number
   mood: number
@@ -32,6 +32,9 @@ export interface CheckinLike {
 export const MIN_DAYS = 5
 
 export const SIDE_EFFECT_TAGS = ['Headache', 'Low appetite', 'Trouble sleeping', 'Irritable', 'Jittery', 'Racing heart', 'Stomach upset', 'Dry mouth'] as const
+
+/** Why a dose was not taken. Logged as given, never judged. */
+export const SKIP_REASONS = ['Planned break', 'Forgot', 'Could not get a refill', 'Side effects', 'Prescriber paused it', 'Other'] as const
 
 /** Things about the day that can change how a dose feels. Logged, never interpreted. */
 export const CONTEXT_TAGS = ['Period or PMS week', 'Short sleep', 'Skipped a meal', 'Stressful day', 'Sick'] as const
@@ -152,4 +155,41 @@ export function observedWearOff(substance: string, doses: DoseLike[], checkins: 
     if (wo !== undefined) hours.push(wo)
   }
   return { days: hours.length, medianHours: median(hours) }
+}
+
+export interface SupplyFill extends FillLike {
+  strengthMg: number
+  quantity?: number
+}
+export interface SupplyDose extends DoseLike {
+  mg: number
+}
+
+export interface Supply {
+  /** Tablets or capsules used and left, counted from logged doses (a half tablet counts as 0.5). */
+  used: number
+  left: number
+  /** Average units per day over the last 14 days of this fill, once there are 3 days of data. */
+  perDay: number | null
+  daysLeft: number | null
+  /** Estimated date the count reaches zero at the logged pace. */
+  runOut: Date | null
+}
+
+/** Days of supply for a fill, from its count and the doses linked to it. Null if no count was entered. */
+export function supplyFor<F extends SupplyFill>(fill: F, fills: F[], doses: SupplyDose[], now: number): Supply | null {
+  if (!fill.quantity || fill.quantity <= 0 || !fill.strengthMg) return null
+  const mine = doses.filter((d) => d.profileId === fill.profileId && fillForDose(d, fills)?.id === fill.id && Date.parse(d.takenAt) <= now)
+  const units = (d: SupplyDose) => d.mg / fill.strengthMg
+  const used = mine.reduce((a, d) => a + units(d), 0)
+  const left = Math.max(0, fill.quantity - used)
+
+  const filled = Date.parse(fill.filledAt)
+  const windowStart = Math.max(filled, now - 14 * 24 * HOUR)
+  const days = (now - windowStart) / (24 * HOUR)
+  const recent = mine.filter((d) => Date.parse(d.takenAt) >= windowStart)
+  const loggedDays = new Set(recent.map((d) => dateKey(Date.parse(d.takenAt)))).size
+  const perDay = loggedDays >= 3 && days >= 1 ? recent.reduce((a, d) => a + units(d), 0) / Math.max(days, loggedDays) : null
+  const daysLeft = perDay ? left / perDay : null
+  return { used, left, perDay, daysLeft, runOut: daysLeft === null ? null : new Date(now + daysLeft * 24 * HOUR) }
 }

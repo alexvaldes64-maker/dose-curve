@@ -112,14 +112,14 @@ export function fmtDayLong(d: Date): string {
 
 export const hoursBetween = (a: number, b: number) => (b - a) / HOUR
 
-/** "12 min", "3 h 12 min", "1 day" style elapsed time. */
+/** "just now", "12 min ago", "3 h 12 min ago", "1 day ago". */
 export function fmtAgo(ms: number): string {
   const min = Math.max(0, Math.round(ms / 60_000))
   if (min < 1) return 'just now'
-  if (min < 60) return `${min} min`
+  if (min < 60) return `${min} min ago`
   const h = Math.floor(min / 60)
   const m = min % 60
-  if (h < 24) return m ? `${h} h ${m} min` : `${h} h`
+  if (h < 24) return m ? `${h} h ${m} min ago` : `${h} h ago`
   const d = Math.floor(h / 24)
-  return d === 1 ? '1 day' : `${d} days`
+  return d === 1 ? '1 day ago' : `${d} days ago`
 }

@@ -6,14 +6,15 @@ import { EntrySheet, type Entry } from '../components/EntrySheet'
 import { Stat } from '../components/Stat'
 import { SubstanceChips } from '../components/SubstanceChips'
 import { PX_PER_HOUR, TOP_PAD } from '../components/Timeline'
-import { downloadBackup, logWoreOff, saveSettings, toggleSample, useActiveProfile, useBackupDue, useHasSample, useLastSubstance, type Settings } from '../db'
+import { db, downloadBackup, logWoreOff, saveSettings, toggleSample, useActiveProfile, useBackupDue, useHasSample, useLastSubstance, type Settings } from '../db'
 import { Avatar, ProfileSheet } from '../components/ProfileSheet'
 import { pickSubstance, useDayModel } from '../hooks/useDayModel'
 import { useNow } from '../hooks/useNow'
 import { HOUR, clampDisplay, levelAt, phaseAt } from '../lib/model'
 import { nowLabel, statusSentence } from '../lib/phaseStyle'
 import { currentDay, dateKey, fmtAgo, fmtTime } from '../lib/time'
-import { doseName } from '../lib/substances'
+import { doseName, getSubstance } from '../lib/substances'
+import { offerUndo } from '../lib/undo'
 import { ScheduleSheet } from '../components/ScheduleSheet'
 
 export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (substanceId: string) => void }) {
@@ -54,6 +55,7 @@ export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (
   const bedtimeOthers = others.filter((o) => o.bedtimePlasma >= 1)
   // Answers "did I take it?": the most recent dose of anything today, up to now.
   const lastToday = day$.doses.filter((d) => Date.parse(d.takenAt) <= now).at(-1)
+  const skippedToday = day$.checkins.filter((c) => c.kind === 'skipped').at(-1)
   // Observed wear-off: offered for medications once today's first dose has been taken.
   const firstDose = m.doses.length ? Math.min(...m.doses.map((d) => Date.parse(d.takenAt))) : null
   const woreOffToday = m.checkins.find((c) => c.kind === 'wore_off' && c.substance === m.id && firstDose !== null && Date.parse(c.at) >= firstDose)
@@ -91,7 +93,12 @@ export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (
           {lastToday ? (
             <span>
               Last logged <span className="font-semibold">{doseName(lastToday)}</span> at {fmtTime(Date.parse(lastToday.takenAt))},{' '}
-              <span className="font-semibold">{fmtAgo(now - Date.parse(lastToday.takenAt))} ago</span>
+              <span className="font-semibold">{fmtAgo(now - Date.parse(lastToday.takenAt))}</span>
+            </span>
+          ) : skippedToday ? (
+            <span>
+              Logged <span className="font-semibold">{getSubstance(skippedToday.substance).name}</span> as skipped today
+              <span className="text-muted"> ({(skippedToday.reason ?? '').toLowerCase()})</span>
             </span>
           ) : (
             <span className="text-muted">Nothing logged today</span>
@@ -156,7 +163,14 @@ export function Today({ settings, onAdjust }: { settings: Settings; onAdjust?: (
               )}
             </p>
             {!woreOffToday && (
-              <button type="button" onClick={() => logWoreOff(m.id)} className="shrink-0 rounded-full bg-text px-4 py-2 text-[15px] font-semibold text-card active:opacity-80">
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = await logWoreOff(m.id)
+                  offerUndo(`Marked ${m.preset.name} as worn off at ${fmtTime(Date.now())}.`, () => db.checkins.delete(id))
+                }}
+                className="shrink-0 rounded-full bg-text px-4 py-2 text-[15px] font-semibold text-card active:opacity-80"
+              >
                 It wore off
               </button>
             )}
